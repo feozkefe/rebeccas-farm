@@ -1,0 +1,22 @@
+{
+  "name": "Rebecca's Farm",
+  "short_name": "Rebecca's Farm",
+  "description": "Rebecca'nın Berlin bahçesi 🌱🐈",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#2d1e2f",
+  "theme_color": "#7ec850",
+  "icons": [
+    {
+      "src": "/assets/ui/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/ui/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
