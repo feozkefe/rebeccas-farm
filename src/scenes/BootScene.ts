@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { PLANTS, type PlantDef } from "../data/plants";
 
 /**
  * Asset yükleme sahnesi.
@@ -14,7 +15,72 @@ export class BootScene extends Phaser.Scene {
     this.createGroundTextures();
     this.createObjectTextures();
     this.createCharacterTextures();
+    for (const p of PLANTS) this.createPlantTextures(p);
     this.scene.start("Garden");
+  }
+
+  /** Bir bitkinin 4 büyüme aşamasının dokularını üretir: plant_{id}_{0..3} */
+  private createPlantTextures(p: PlantDef) {
+    // Aşama 0: fide — kısa sap + iki minik yaprak
+    let g = this.gfx();
+    g.fillStyle(0x5a9e4a);
+    g.fillRect(7, 10, 2, 4);
+    g.fillStyle(p.leafColor);
+    g.fillRect(5, 9, 2, 2);
+    g.fillRect(9, 8, 2, 2);
+    g.generateTexture(`plant_${p.id}_0`, 16, 16);
+    g.destroy();
+
+    // Aşama 1: genç — uzun sap + yaprak çifti
+    g = this.gfx();
+    g.fillStyle(0x4a8e3e);
+    g.fillRect(7, 6, 2, 8);
+    g.fillStyle(p.leafColor);
+    g.fillCircle(5, 8, 2);
+    g.fillCircle(11, 7, 2);
+    g.fillCircle(6, 11, 2);
+    g.fillCircle(10, 10, 2);
+    g.generateTexture(`plant_${p.id}_1`, 16, 16);
+    g.destroy();
+
+    // Aşama 2: olgunlaşıyor — yaprak kümesi
+    g = this.gfx();
+    g.fillStyle(0x4a8e3e);
+    g.fillRect(7, 10, 2, 4);
+    g.fillStyle(p.leafColor);
+    g.fillCircle(8, 8, 5);
+    g.fillCircle(4, 10, 3);
+    g.fillCircle(12, 10, 3);
+    g.generateTexture(`plant_${p.id}_2`, 16, 16);
+    g.destroy();
+
+    // Aşama 3: hasat hazır — meyveler ya da tepede çiçek
+    g = this.gfx();
+    g.fillStyle(0x4a8e3e);
+    g.fillRect(7, 10, 2, 4);
+    g.fillStyle(p.leafColor);
+    g.fillCircle(8, 8, 5);
+    g.fillCircle(4, 10, 3);
+    g.fillCircle(12, 10, 3);
+    if (p.flower) {
+      g.fillStyle(p.accentColor); // taç yapraklar
+      g.fillCircle(8, 4, 4);
+      g.fillCircle(4, 5, 2);
+      g.fillCircle(12, 5, 2);
+      g.fillCircle(8, 2, 2);
+      g.fillStyle(p.accentDark); // çiçek göbeği
+      g.fillCircle(8, 4, 2);
+    } else {
+      g.fillStyle(p.accentColor); // meyveler
+      g.fillCircle(5, 7, 2);
+      g.fillCircle(11, 9, 2);
+      g.fillCircle(8, 11, 2);
+      g.fillStyle(p.accentDark);
+      g.fillRect(4, 6, 1, 1);
+      g.fillRect(10, 8, 1, 1);
+    }
+    g.generateTexture(`plant_${p.id}_3`, 16, 16);
+    g.destroy();
   }
 
   private gfx() {

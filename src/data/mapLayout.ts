@@ -53,10 +53,12 @@ export function buildGround(): Ground[][] {
     }
   }
 
-  // Yükseltilmiş yatak içi toprak (çevresi wood-frame objesi olarak çizilir)
-  for (let y = RAISED_BED.ty + 1; y < RAISED_BED.ty + RAISED_BED.h - 1; y++) {
-    for (let x = RAISED_BED.tx + 1; x < RAISED_BED.tx + RAISED_BED.w - 1; x++) {
-      grid[y][x] = "soil";
+  // Yükseltilmiş yatak içleri toprak (çevre wood-frame objesi olarak çizilir)
+  for (const bed of RAISED_BEDS) {
+    for (let y = bed.ty + 1; y < bed.ty + bed.h - 1; y++) {
+      for (let x = bed.tx + 1; x < bed.tx + bed.w - 1; x++) {
+        grid[y][x] = "soil";
+      }
     }
   }
 
@@ -66,8 +68,29 @@ export function buildGround(): Ground[][] {
   return grid;
 }
 
-/** Yükseltilmiş yatak (tile cinsinden konum/boyut) — ekim alanı burası olacak */
-export const RAISED_BED = { tx: 20, ty: 15, w: 5, h: 4 };
+/**
+ * Yükseltilmiş yataklar — ekim alanları.
+ * İlki fotoğraftaki gerçek yatak; diğer ikisi oynanış için eklendi
+ * (gerçek bahçede yok ama ekilecek yer lazım — kullanıcı onayladı).
+ */
+export const RAISED_BEDS = [
+  { tx: 20, ty: 15, w: 5, h: 4 },
+  { tx: 20, ty: 21, w: 5, h: 4 },
+  { tx: 12, ty: 18, w: 5, h: 4 },
+];
+
+/** Yatak içlerindeki ekilebilir tile'lar (3x2 = yatak başına 6 plot) */
+export function buildPlotTiles(): [number, number][] {
+  const tiles: [number, number][] = [];
+  for (const bed of RAISED_BEDS) {
+    for (let y = bed.ty + 1; y < bed.ty + bed.h - 1; y++) {
+      for (let x = bed.tx + 1; x < bed.tx + bed.w - 1; x++) {
+        tiles.push([x, y]);
+      }
+    }
+  }
+  return tiles;
+}
 
 export const STEPPING_STONES: [number, number][] = [
   [17, 41],
@@ -99,8 +122,12 @@ export const MAP_OBJECTS: MapObject[] = [
   { texture: "dryer", tx: 4, ty: 17 },
   // Fidan (raised bed'in yanında)
   { texture: "treeSmall", tx: 18, ty: 14 },
-  // Raised bed ahşap çerçevesi
-  { texture: "bedFrame", tx: RAISED_BED.tx, ty: RAISED_BED.ty },
+  // Raised bed ahşap çerçeveleri
+  ...RAISED_BEDS.map((bed) => ({
+    texture: "bedFrame",
+    tx: bed.tx,
+    ty: bed.ty,
+  })),
   // Kapı — alt orta ("140")
   { texture: "gate", tx: 13, ty: 42 },
 ];

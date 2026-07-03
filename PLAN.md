@@ -53,12 +53,15 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
 ### V1 — Olmazsa olmaz (hafta 1-2)
 - [x] Proje kurulumu (Vite + Phaser + TS)
 - [x] Karakter hareketi (tap-to-move) — placeholder sprite ile
-- [x] Kedi: haritada dolaşır, dokununca kalp çıkar — placeholder sprite ile
-- [ ] Bahçe haritası (fotoğraflardan, Tiled ile)
-- [ ] Asset paketi entegrasyonu + karakter/kedi özelleştirme
+- [x] Kedi (**Spicey**): haritada dolaşır, dokununca kalp çıkar + Rebecca konuşur
+- [x] Bahçe haritası (fotoğraflardan, kod ile — `src/data/mapLayout.ts`)
+- [x] Rebecca sprite'ı: sarı topuz, mavi göz, turuncu tişört, yırtık kot şort
+- [x] 6 bitki: ek/sula/büyüme (4 stage)/hasat — domates, biber, zambak (gerçek)
+      + çilek, marul, ayçiçeği (`src/data/plants.ts`, `src/systems/PlantSystem.ts`)
+- [x] Coin sistemi + tohum seçici HUD (`src/ui/HUD.ts`)
+- [x] Konuşma balonları: İngilizce + arada B2 Türkçe karışık
+- [ ] Sprout Lands asset entegrasyonu (indirildi → `public/assets/sprout-lands/`)
 - [ ] Yürüme animasyonu
-- [ ] 3-5 bitki: ek/sula/büyüme (3-4 stage)/hasat — Rebecca'nın gerçek bitkileri
-- [ ] Coin sistemi + tohum dükkanı
 - [ ] Kedi: güneşlenme/uyuma davranışları
 - [ ] Joint mekaniği: banka otur → sarma animasyonu → chill mode
       (dreamy filter, lofi müzik, büyüme 2x)
@@ -86,7 +89,7 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
 ## 7. Kullanıcıdan gerekenler → `reference/` klasörüne at
 
 - [ ] Bahçe fotoğrafları → `reference/garden/`
-- [ ] Kedinin fotoğrafı + **adı** → `reference/cat/`
+- [x] Kedinin adı: **Spicey** — fotoğrafı hâlâ bekleniyor → `reference/cat/`
 - [ ] Bahçede yetiştirdiği bitkilerin listesi → `reference/plants.md` (veya söyle, ben yazayım)
 - [ ] Doğum günü mesajı metni → `reference/birthday-message.md`
 - [ ] (Opsiyonel) Anı fotoğrafları → `reference/memories/`
