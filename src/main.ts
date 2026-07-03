@@ -18,4 +18,6 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [BootScene, GardenScene],
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+// Konsoldan/testten erişim için (debug)
+(window as unknown as { game: Phaser.Game }).game = game;

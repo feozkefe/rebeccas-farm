@@ -1,14 +1,19 @@
 import Phaser from "phaser";
+import {
+  TILE,
+  MAP_W,
+  MAP_H,
+  buildGround,
+  buildEdgeObjects,
+  MAP_OBJECTS,
+} from "../data/mapLayout";
 
-const TILE = 16;
-const MAP_W = 40; // tile cinsinden — gerçek bahçe fotoğrafları gelince Tiled haritasıyla değişecek
-const MAP_H = 30;
 const PLAYER_SPEED = 80;
 
 /**
- * Ana bahçe sahnesi.
- * Şu an: placeholder çimen zemini, tap-to-move Rebecca, dolaşan kaliko kedi.
- * Sırada: gerçek harita (Tiled), ekim/sulama/hasat, HUD.
+ * Ana bahçe sahnesi — yerleşim reference/garden/ fotoğraflarından.
+ * Şu an: harita, tap-to-move Rebecca, dolaşan kaliko kedi.
+ * Sırada: ekim/sulama/hasat (raised bed), HUD, gerçek assetler.
  */
 export class GardenScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -22,6 +27,7 @@ export class GardenScene extends Phaser.Scene {
 
   create() {
     this.createGround();
+    this.createObjects();
     this.createPlayer();
     this.createCat();
     this.setupCamera();
@@ -29,39 +35,34 @@ export class GardenScene extends Phaser.Scene {
   }
 
   private createGround() {
+    const grid = buildGround();
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
-        this.add.image(x * TILE, y * TILE, "grass").setOrigin(0);
+        this.add.image(x * TILE, y * TILE, grid[y][x]).setOrigin(0).setDepth(0);
       }
     }
-    // Örnek toprak yatakları — gerçek yerleşim fotoğraflardan gelecek
-    for (const [bx, by] of [
-      [8, 8],
-      [8, 14],
-      [24, 10],
-    ]) {
-      for (let y = 0; y < 3; y++) {
-        for (let x = 0; x < 6; x++) {
-          this.add.image((bx + x) * TILE, (by + y) * TILE, "soil").setOrigin(0);
-        }
-      }
+  }
+
+  private createObjects() {
+    for (const obj of [...MAP_OBJECTS, ...buildEdgeObjects()]) {
+      const img = this.add
+        .image(obj.tx * TILE, obj.ty * TILE, obj.texture)
+        .setOrigin(obj.originX ?? 0, obj.originY ?? 0);
+      // Alt kenarına göre depth: oyuncu objenin önünden/arkasından doğru geçsin
+      img.setDepth(img.y + img.displayHeight);
     }
   }
 
   private createPlayer() {
-    this.player = this.physics.add.sprite(
-      (MAP_W / 2) * TILE,
-      (MAP_H / 2) * TILE,
-      "player"
-    );
+    // Kapının hemen önünde başla (bahçeye yeni girmiş gibi)
+    this.player = this.physics.add.sprite(16 * TILE, 40 * TILE, "player");
     this.player.setCollideWorldBounds(true);
-    this.physics.world.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE);
+    this.physics.world.setBounds(TILE, TILE, (MAP_W - 2) * TILE, (MAP_H - 2) * TILE);
   }
 
   private createCat() {
-    this.cat = this.physics.add.sprite(10 * TILE, 10 * TILE, "cat");
+    this.cat = this.physics.add.sprite(22 * TILE, 20 * TILE, "cat");
     this.cat.setCollideWorldBounds(true);
-    // Kediye dokununca kalp çıkar
     this.cat.setInteractive();
     this.cat.on("pointerdown", () => this.petCat());
   }
@@ -69,7 +70,7 @@ export class GardenScene extends Phaser.Scene {
   private setupCamera() {
     const cam = this.cameras.main;
     cam.startFollow(this.player, true, 0.1, 0.1);
-    cam.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE);
+    cam.setBounds(0, -TILE * 3, MAP_W * TILE, (MAP_H + 3) * TILE);
     cam.setZoom(3);
   }
 
@@ -86,7 +87,8 @@ export class GardenScene extends Phaser.Scene {
   private petCat() {
     const heart = this.add
       .text(this.cat.x, this.cat.y - 10, "❤", { fontSize: "10px" })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(10000);
     this.tweens.add({
       targets: heart,
       y: heart.y - 15,
@@ -99,6 +101,9 @@ export class GardenScene extends Phaser.Scene {
   update(_time: number, delta: number) {
     this.updatePlayerMovement();
     this.updateCatWander(delta);
+    // y'ye göre depth: haritadaki objelerin önünden/arkasından doğru geçiş
+    this.player.setDepth(this.player.y + this.player.displayHeight / 2);
+    this.cat.setDepth(this.cat.y + this.cat.displayHeight / 2);
   }
 
   private updatePlayerMovement() {
@@ -118,13 +123,12 @@ export class GardenScene extends Phaser.Scene {
   private updateCatWander(delta: number) {
     this.catTimer -= delta;
     if (this.catTimer <= 0) {
-      // Bir süre dur, sonra rastgele bir yöne yürü
       if (this.cat.body!.velocity.length() > 0) {
         this.cat.setVelocity(0);
         this.catTimer = Phaser.Math.Between(2000, 6000); // dinlenme
       } else {
-        const tx = Phaser.Math.Between(2, MAP_W - 2) * TILE;
-        const ty = Phaser.Math.Between(2, MAP_H - 2) * TILE;
+        const tx = Phaser.Math.Between(3, MAP_W - 3) * TILE;
+        const ty = Phaser.Math.Between(10, MAP_H - 3) * TILE;
         this.physics.moveTo(this.cat, tx, ty, 40);
         this.catTimer = Phaser.Math.Between(1000, 3000); // yürüme süresi
       }
