@@ -30,14 +30,12 @@ Karar: Native APK YOK. PWA yeterli.
 ## 3. Görsel stil
 
 - **Pixel art**, 16x16 tile bazlı (karakter 16x24).
-- Temel: **Sprout Lands** asset paketi (ücretsiz, itch.io — Cup Nooble).
-- Özelleştirme (Piskel veya Aseprite):
-  - **Karakter:** Rebecca'ya benzetilecek (saç, kıyafet).
-  - **Kedi:** kaliko desenli (beyaz + turuncu + siyah lekeler), gerçek kedinin
-    fotoğrafından desen birebir aktarılacak.
-  - **Bahçe haritası:** Berlin'deki gerçek bahçenin fotoğraflarından yerleşim
-    birebir kurulacak.
-- Harita: **Tiled** → Phaser JSON export.
+- **KARAR (4 Tem):** Tüm görseller **el yapımı** (kodla üretilen dokular) —
+  Sprout Lands denendi, kullanıcı el yapımı karakterleri daha tatlı buldu.
+  Paket `reference/sprout-lands/` altında duruyor ama KULLANILMIYOR.
+  - **Rebecca:** sarı topuz, mavi göz, turuncu tişört, yırtık kot şort ✅
+  - **Spicey:** kaliko desen (beyaz + turuncu + siyah) ✅ — kullanıcı onayladı
+  - **Bahçe haritası:** fotoğraflardan kodla kurulu (`src/data/mapLayout.ts`) ✅
 
 ## 4. Çekirdek döngü
 
@@ -60,8 +58,8 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
       + çilek, marul, ayçiçeği (`src/data/plants.ts`, `src/systems/PlantSystem.ts`)
 - [x] Coin sistemi + tohum seçici HUD (`src/ui/HUD.ts`)
 - [x] Konuşma balonları: İngilizce + arada B2 Türkçe karışık
-- [ ] Sprout Lands asset entegrasyonu (indirildi → `public/assets/sprout-lands/`)
-- [ ] Yürüme animasyonu
+- [x] 6 yatak, düzenli 2x3 ızgara (36 ekim karesi)
+- [ ] Yürüme animasyonu (el yapımı sprite'a 2-3 kare)
 - [ ] Kedi: güneşlenme/uyuma davranışları
 - [ ] Joint mekaniği: banka otur → sarma animasyonu → chill mode
       (dreamy filter, lofi müzik, büyüme 2x)

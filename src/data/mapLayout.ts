@@ -69,14 +69,18 @@ export function buildGround(): Ground[][] {
 }
 
 /**
- * Yükseltilmiş yataklar — ekim alanları.
- * İlki fotoğraftaki gerçek yatak; diğer ikisi oynanış için eklendi
+ * Yükseltilmiş yataklar — ekim alanları, düzenli 2 sütun x 3 satır ızgara.
+ * Sağ üstteki (20,15) fotoğraftaki gerçek yatak; kalanı oynanış için eklendi
  * (gerçek bahçede yok ama ekilecek yer lazım — kullanıcı onayladı).
+ * Aralarda 2 tile'lık yürüme koridorları var.
  */
 export const RAISED_BEDS = [
+  { tx: 13, ty: 15, w: 5, h: 4 },
   { tx: 20, ty: 15, w: 5, h: 4 },
+  { tx: 13, ty: 21, w: 5, h: 4 },
   { tx: 20, ty: 21, w: 5, h: 4 },
-  { tx: 12, ty: 18, w: 5, h: 4 },
+  { tx: 13, ty: 27, w: 5, h: 4 },
+  { tx: 20, ty: 27, w: 5, h: 4 },
 ];
 
 /** Yatak içlerindeki ekilebilir tile'lar (3x2 = yatak başına 6 plot) */
