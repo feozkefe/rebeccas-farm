@@ -139,6 +139,33 @@ export class PlantSystem {
     }
   }
 
+  /** Yağmur: sulanmamış tüm ekinleri sular. */
+  waterAll() {
+    const now = Date.now();
+    for (const plot of this.plots.values()) {
+      const crop = plot.crop;
+      if (!crop || crop.watered || crop.stage >= MATURE_STAGE) continue;
+      crop.watered = true;
+      crop.wateredAt = now;
+      plot.soilImage.setTint(WATERED_TINT);
+    }
+  }
+
+  /** Kedi yaramazlığı hedefi: sulanmış rastgele bir plot (yoksa null). */
+  randomWateredPlot(): Plot | null {
+    const candidates = [...this.plots.values()].filter(
+      (p) => p.crop && p.crop.watered && p.crop.stage < MATURE_STAGE
+    );
+    return candidates.length > 0 ? Phaser.Math.RND.pick(candidates) : null;
+  }
+
+  /** Kedi eşeledi: sulanmışlığı bozar. */
+  unwater(plot: Plot) {
+    if (!plot.crop) return;
+    plot.crop.watered = false;
+    plot.soilImage.clearTint();
+  }
+
   /** Kayıt için ekin durumlarını döker. */
   serialize(): CropSave[] {
     const out: CropSave[] = [];

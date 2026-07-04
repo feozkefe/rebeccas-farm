@@ -13,6 +13,8 @@ export class UIScene extends Phaser.Scene {
   private chillOverlay!: Phaser.GameObjects.Rectangle;
   private chillGlow!: Phaser.GameObjects.Rectangle;
   private chillText!: Phaser.GameObjects.Text;
+  private ambientOverlay!: Phaser.GameObjects.Rectangle;
+  private rainOverlay!: Phaser.GameObjects.Rectangle;
 
   constructor() {
     super("UI");
@@ -26,6 +28,16 @@ export class UIScene extends Phaser.Scene {
       backgroundColor: "#00000099",
       padding: { x: 10, y: 6 },
     };
+
+    // Gün/gece tonu (saate göre) + yağmur grisi — chill tülünün altında
+    this.ambientOverlay = this.add
+      .rectangle(0, 0, 10, 10, 0x1a2350, 0)
+      .setOrigin(0)
+      .setDepth(3);
+    this.rainOverlay = this.add
+      .rectangle(0, 0, 10, 10, 0x5a708a, 0)
+      .setOrigin(0)
+      .setDepth(4);
 
     // Chill filtresi: mor tül + alttan sıcak pembe parıltı
     this.chillOverlay = this.add
@@ -76,6 +88,8 @@ export class UIScene extends Phaser.Scene {
     this.chillOverlay.setSize(w, h);
     this.chillGlow.setPosition(0, h * 0.6).setSize(w, h * 0.4);
     this.chillText.setPosition(w / 2, h - 14);
+    this.ambientOverlay.setSize(w, h);
+    this.rainOverlay.setSize(w, h);
   }
 
   private refresh() {
@@ -99,5 +113,22 @@ export class UIScene extends Phaser.Scene {
       this.chillOverlay.setFillStyle(0x9a6ac8, pulse);
       this.chillText.setText("🌿 chill mode — plants grow 2x");
     }
+    this.updateAmbient();
+  }
+
+  /** Cihaz saatine göre gün/gece tonu + yağmur grisi */
+  private updateAmbient() {
+    const hour = new Date().getHours();
+    if (hour >= 21 || hour < 5) {
+      this.ambientOverlay.setFillStyle(0x1a2350, 0.3); // gece
+    } else if (hour >= 19) {
+      this.ambientOverlay.setFillStyle(0x8a4a6a, 0.15); // akşamüstü
+    } else if (hour < 7) {
+      this.ambientOverlay.setFillStyle(0xffd8a8, 0.1); // şafak
+    } else {
+      this.ambientOverlay.setFillStyle(0x1a2350, 0); // gündüz
+    }
+    const raining = (this.registry.get("raining") as boolean) ?? false;
+    this.rainOverlay.setFillStyle(0x5a708a, raining ? 0.14 : 0);
   }
 }

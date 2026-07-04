@@ -297,6 +297,22 @@ export class BootScene extends Phaser.Scene {
     g.lineBetween(0, 9, 32, 9);
     g.generateTexture("bench", 32, 18);
     g.destroy();
+
+    // Berlin TV Kulesi (Fernsehturm) silueti — uzakta, 24x88
+    g = this.gfx();
+    g.fillStyle(0x8a93a6); // beton gövde (uzak sis tonu)
+    g.fillRect(10, 34, 4, 54); // şaft (aşağı doğru hafif genişler)
+    g.fillRect(9, 76, 6, 12); // taban
+    g.fillStyle(0xb8c0d0); // metalik küre
+    g.fillCircle(12, 26, 8);
+    g.fillStyle(0x9aa3b6); // küre gölgesi
+    g.fillRect(6, 27, 13, 3);
+    g.fillStyle(0x8a93a6); // anten
+    g.fillRect(11, 4, 2, 14);
+    g.fillStyle(0xd94a4a); // anten ucu (kırmızı-beyaz)
+    g.fillRect(11, 0, 2, 4);
+    g.generateTexture("tvTower", 24, 88);
+    g.destroy();
   }
 
   private createCharacterTextures() {

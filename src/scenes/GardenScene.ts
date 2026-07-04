@@ -10,6 +10,7 @@ import {
 } from "../data/mapLayout";
 import { PlantSystem, type Plot, type InteractResult } from "../systems/PlantSystem";
 import { SaveSystem } from "../systems/SaveSystem";
+import { Sfx } from "../systems/Sfx";
 
 const PLAYER_SPEED = 80;
 const CAT_NAME = "Spicey";
@@ -72,6 +73,21 @@ const LINES = {
     "The plants grow faster when I'm happy. Bilimsel gerçek.",
     "Look at the sky... Gökyüzü ne güzel.",
   ],
+  rainStart: () => [
+    "Berlin rain! No watering needed. Yağmur her şeyi sular.",
+    "Here comes the rain... Yağmur yağıyor, süper.",
+    "Free water from the sky! Bedava su!",
+  ],
+  catDig: () => [
+    `${CAT_NAME}! Not the plants! Yaramaz kedi!`,
+    `Hey! ${CAT_NAME}, o yatak senin değil!`,
+    `${CAT_NAME}iiii! My poor tomatoes... Of ya.`,
+  ],
+  catGift: () => [
+    `${CAT_NAME} brought a gift! Bir hediye mi o? +5c`,
+    `A present from ${CAT_NAME}! ...is that a leaf? Neyse, sağol kedicik. +5c`,
+    `${CAT_NAME}, canım benim! What did you bring? +5c`,
+  ],
 };
 
 /**
@@ -94,6 +110,16 @@ export class GardenScene extends Phaser.Scene {
   private plants!: PlantSystem;
   private bubble: Phaser.GameObjects.Container | null = null;
   private bubbleEvent: Phaser.Time.TimerEvent | null = null;
+  private sfx = new Sfx();
+  // Yağmur
+  private raining = false;
+  private nextRainAt = 0;
+  private rainEndsAt = 0;
+  private rainWaterTimer = 0;
+  // Kedi yaramazlığı / hediyesi
+  private mischiefTimer = 0;
+  private mischiefMode: "dig" | "gift" | null = null;
+  private mischiefPlot: Plot | null = null;
 
   constructor() {
     super("Garden");
@@ -104,6 +130,9 @@ export class GardenScene extends Phaser.Scene {
     this.registry.set("coins", save?.coins ?? 20);
     this.registry.set("seedIndex", save?.seedIndex ?? 0);
     this.registry.set("chilling", false);
+    this.registry.set("raining", false);
+    this.nextRainAt = Date.now() + Phaser.Math.Between(120_000, 300_000);
+    this.mischiefTimer = Phaser.Math.Between(60_000, 120_000);
 
     const soilImages = this.createGround();
     this.createObjects();
@@ -144,6 +173,19 @@ export class GardenScene extends Phaser.Scene {
         .setOrigin(obj.originX ?? 0, obj.originY ?? 0);
       img.setDepth(img.y + img.displayHeight);
     }
+    this.createSkyline();
+  }
+
+  /** Haritanın üstünde uzak Berlin: akşam göğü + TV Kulesi silueti */
+  private createSkyline() {
+    this.add
+      .rectangle(0, -TILE * 7, MAP_W * TILE, TILE * 7, 0x3a3050)
+      .setOrigin(0)
+      .setDepth(-100);
+    this.add
+      .image(5 * TILE, -TILE * 6, "tvTower")
+      .setOrigin(0)
+      .setDepth(-50); // ağaç sırasının arkasında kalır
   }
 
   private createBench() {
@@ -191,7 +233,8 @@ export class GardenScene extends Phaser.Scene {
   private setupCamera() {
     const cam = this.cameras.main;
     cam.startFollow(this.player, true, 0.1, 0.1);
-    cam.setBounds(0, -TILE * 3, MAP_W * TILE, (MAP_H + 3) * TILE);
+    // Üstte TV Kulesi silueti için ekstra alan
+    cam.setBounds(0, -TILE * 7, MAP_W * TILE, (MAP_H + 7) * TILE);
     cam.setZoom(3);
   }
 
@@ -258,18 +301,23 @@ export class GardenScene extends Phaser.Scene {
     const pick = (arr: string[]) => Phaser.Math.RND.pick(arr);
     switch (result.action) {
       case "plant":
+        this.sfx.plant();
         this.showBubble(pick(LINES.plant(name)));
         break;
       case "water":
+        this.sfx.water();
         this.showBubble(pick(LINES.water()));
         break;
       case "harvest":
+        this.sfx.harvest();
+        this.sfx.coin();
         this.showBubble(`${pick(LINES.harvest(name))} +${result.earned}c`);
         break;
       case "growing":
         this.showBubble(pick(LINES.growing()));
         break;
       case "noCoins":
+        this.sfx.denied();
         this.showBubble(pick(LINES.noCoins()));
         break;
     }
@@ -278,6 +326,7 @@ export class GardenScene extends Phaser.Scene {
   }
 
   private petCat() {
+    this.sfx.purr();
     const heart = this.add
       .text(this.cat.x, this.cat.y - 10, "❤", { fontSize: "10px" })
       .setOrigin(0.5)
@@ -397,8 +446,10 @@ export class GardenScene extends Phaser.Scene {
     this.updatePlayerMovement();
     this.updateWalkAnimation();
     this.updateCat(delta);
+    this.updateMischief(delta);
     this.updateIdleChatter(delta);
     this.updateChillNotes(delta);
+    this.updateRain();
     // Banktan kalkınca (uzaklaşınca) chill biter
     if (this.isChilling() && !this.playerNear(this.benchSeat(), 14)) {
       this.endChill();
@@ -407,6 +458,156 @@ export class GardenScene extends Phaser.Scene {
     this.positionBubble();
     this.player.setDepth(this.player.y + this.player.displayHeight / 2);
     this.cat.setDepth(this.cat.y + this.cat.displayHeight / 2);
+  }
+
+  // ---------- Berlin yağmuru ----------
+
+  private updateRain() {
+    const now = Date.now();
+    if (!this.raining) {
+      if (now >= this.nextRainAt) this.startRain();
+      return;
+    }
+    if (now >= this.rainEndsAt) {
+      this.stopRain();
+      return;
+    }
+    // Damlalar: kamera görüş alanına her karede birkaç tane
+    const view = this.cameras.main.worldView;
+    for (let i = 0; i < 3; i++) {
+      const drop = this.add
+        .rectangle(
+          Phaser.Math.Between(view.x, view.x + view.width),
+          Phaser.Math.Between(view.y - 10, view.y + view.height - 20),
+          1,
+          5,
+          0xa8c8e8,
+          0.7
+        )
+        .setDepth(50000);
+      this.tweens.add({
+        targets: drop,
+        y: drop.y + 40,
+        alpha: 0.15,
+        duration: 350,
+        onComplete: () => drop.destroy(),
+      });
+    }
+    // Yağmur sürerken yeni ekilenler de sulansın
+    this.rainWaterTimer -= this.game.loop.delta;
+    if (this.rainWaterTimer <= 0) {
+      this.plants.waterAll();
+      this.rainWaterTimer = 4000;
+    }
+  }
+
+  private startRain() {
+    this.raining = true;
+    this.registry.set("raining", true);
+    this.rainEndsAt = Date.now() + Phaser.Math.Between(35_000, 70_000);
+    this.rainWaterTimer = 0;
+    this.sfx.rain();
+    this.showBubble(Phaser.Math.RND.pick(LINES.rainStart()));
+    this.resetIdleTimer();
+  }
+
+  private stopRain() {
+    this.raining = false;
+    this.registry.set("raining", false);
+    this.nextRainAt = Date.now() + Phaser.Math.Between(180_000, 420_000);
+  }
+
+  // ---------- kedi yaramazlığı / hediyesi ----------
+
+  private updateMischief(delta: number) {
+    if (this.catAsleep) return;
+
+    // Hedefe yürüme aşaması
+    if (this.mischiefMode) {
+      const target =
+        this.mischiefMode === "dig" && this.mischiefPlot
+          ? new Phaser.Math.Vector2(
+              this.mischiefPlot.tx * TILE + TILE / 2,
+              this.mischiefPlot.ty * TILE + TILE / 2
+            )
+          : new Phaser.Math.Vector2(this.player.x, this.player.y);
+      const dist = Phaser.Math.Distance.Between(
+        this.cat.x,
+        this.cat.y,
+        target.x,
+        target.y
+      );
+      if (dist < (this.mischiefMode === "dig" ? 8 : 20)) {
+        this.cat.setVelocity(0);
+        this.resolveMischief();
+      } else {
+        this.physics.moveTo(this.cat, target.x, target.y, 55);
+      }
+      return;
+    }
+
+    this.mischiefTimer -= delta;
+    if (this.mischiefTimer > 0) return;
+
+    if (Phaser.Math.Between(0, 100) < 35) {
+      this.mischiefMode = "gift";
+    } else {
+      this.mischiefPlot = this.plants.randomWateredPlot();
+      if (this.mischiefPlot) {
+        this.mischiefMode = "dig";
+      } else {
+        this.mischiefTimer = Phaser.Math.Between(30_000, 60_000);
+      }
+    }
+  }
+
+  private resolveMischief() {
+    if (this.mischiefMode === "dig" && this.mischiefPlot) {
+      this.plants.unwater(this.mischiefPlot);
+      this.sfx.dig();
+      // Toprak parçacıkları saçılır
+      for (let i = 0; i < 6; i++) {
+        const dirt = this.add
+          .circle(
+            this.cat.x + Phaser.Math.Between(-4, 4),
+            this.cat.y + Phaser.Math.Between(-2, 2),
+            1.2,
+            0x7a4e33
+          )
+          .setDepth(10000);
+        this.tweens.add({
+          targets: dirt,
+          x: dirt.x + Phaser.Math.Between(-10, 10),
+          y: dirt.y - Phaser.Math.Between(4, 10),
+          alpha: 0,
+          duration: 500,
+          onComplete: () => dirt.destroy(),
+        });
+      }
+      this.showBubble(Phaser.Math.RND.pick(LINES.catDig()));
+    } else if (this.mischiefMode === "gift") {
+      const coins = (this.registry.get("coins") as number) ?? 0;
+      this.registry.set("coins", coins + 5);
+      this.sfx.gift();
+      const heart = this.add
+        .text(this.cat.x, this.cat.y - 10, "🎁", { fontSize: "8px" })
+        .setOrigin(0.5)
+        .setDepth(10000);
+      this.tweens.add({
+        targets: heart,
+        y: heart.y - 14,
+        alpha: 0,
+        duration: 1200,
+        onComplete: () => heart.destroy(),
+      });
+      this.showBubble(Phaser.Math.RND.pick(LINES.catGift()));
+      this.saveNow();
+    }
+    this.mischiefMode = null;
+    this.mischiefPlot = null;
+    this.mischiefTimer = Phaser.Math.Between(60_000, 150_000);
+    this.catTimer = Phaser.Math.Between(2000, 5000);
+    this.resetIdleTimer();
   }
 
   private updatePlayerMovement() {
@@ -443,6 +644,7 @@ export class GardenScene extends Phaser.Scene {
 
   /** Kedi: dolaş → dinlen → arada kıvrılıp uyu (Zzz) */
   private updateCat(delta: number) {
+    if (this.mischiefMode) return; // yaramazlık sırasında kontrol updateMischief'te
     this.catTimer -= delta;
     if (this.catTimer > 0) return;
 

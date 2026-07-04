@@ -69,12 +69,17 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
 - [ ] Deploy (Vercel/Netlify — kullanıcı hesabı gerekiyor)
 
 ### V2 — Zaman kalırsa (hafta 3)
-- [ ] Kedi yaramazlıkları: yatağı eşeler, bazen "hediye" getirir
-- [ ] Gün/gece döngüsü + Berlin yağmuru (yağmurda sulama gerekmez)
+- [x] Kedi yaramazlıkları: sulanmış yatağı eşeler (sulama bozulur),
+      bazen oyuncuya hediye getirir (+5c)
+- [x] Gün/gece tonu (cihaz saatine göre: şafak/gündüz/akşamüstü/gece)
+- [x] Berlin yağmuru: arada 35-70 sn yağar, tüm ekinleri sular, gri ton + damlalar
+- [x] Ses efektleri: Web Audio ile üretilen chiptune sesler (ek/sula/hasat/
+      coin/mır/eşeleme/hediye/yağmur) — dosya yok, kodda
+- [x] Uzakta TV Kulesi silueti (terasın arkasında, akşam göğüyle)
 - [ ] Dekorasyon dükkanı (saksı, cüce, fener)
 - [ ] Anı koleksiyonu: hedeflere ulaşınca açılan ortak fotoğraflar/notlar
-- [ ] Ses efektleri
-- [ ] Uzakta TV Kulesi silueti / Berlin dokunuşları
+      (kullanıcıdan fotoğraf bekleniyor)
+- [ ] Lofi müzik (chill mode için)
 
 ## 6. Zaman planı
 
