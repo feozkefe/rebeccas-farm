@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { PLANTS } from "../data/plants";
+import { audioEngine } from "../systems/AudioEngine";
 
 /**
  * HUD — Garden sahnesinin üstünde ayrı, zoom'suz bir sahne olarak çalışır.
@@ -63,6 +64,17 @@ export class UIScene extends Phaser.Scene {
       .setVisible(false);
 
     this.coinText = this.add.text(10, 10, "", style).setDepth(10);
+
+    // Ses düğmesi — coin'in altında
+    const muteBtn = this.add
+      .text(10, 52, audioEngine.isMuted() ? "🔇" : "🔊", style)
+      .setDepth(10)
+      .setInteractive({ useHandCursor: true });
+    muteBtn.on("pointerdown", () => {
+      audioEngine.unlock(); // dokunuş = ses iznini de aç
+      audioEngine.setMuted(!audioEngine.isMuted());
+      muteBtn.setText(audioEngine.isMuted() ? "🔇" : "🔊");
+    });
 
     this.seedText = this.add
       .text(this.scale.width - 10, 10, "", style)

@@ -11,6 +11,8 @@ import {
 import { PlantSystem, type Plot, type InteractResult } from "../systems/PlantSystem";
 import { SaveSystem } from "../systems/SaveSystem";
 import { Sfx } from "../systems/Sfx";
+import { Music } from "../systems/Music";
+import { audioEngine } from "../systems/AudioEngine";
 
 const PLAYER_SPEED = 80;
 const CAT_NAME = "Spicey";
@@ -111,6 +113,7 @@ export class GardenScene extends Phaser.Scene {
   private bubble: Phaser.GameObjects.Container | null = null;
   private bubbleEvent: Phaser.Time.TimerEvent | null = null;
   private sfx = new Sfx();
+  private music = new Music(() => this.isChilling());
   // Yağmur
   private raining = false;
   private nextRainAt = 0;
@@ -144,8 +147,17 @@ export class GardenScene extends Phaser.Scene {
     if (save) this.plants.restore(save.crops);
     this.setupInput();
     this.setupAutosave();
+    this.setupAudio();
     this.scene.launch("UI");
     this.resetIdleTimer();
+  }
+
+  /** Tarayıcı sesi ilk dokunuşta açar; müzik de o anda başlar. */
+  private setupAudio() {
+    audioEngine.loadMutePreference();
+    this.input.on("pointerdown", () => audioEngine.unlock());
+    this.music.start();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.music.stop());
   }
 
   // ---------- kurulum ----------
@@ -173,19 +185,6 @@ export class GardenScene extends Phaser.Scene {
         .setOrigin(obj.originX ?? 0, obj.originY ?? 0);
       img.setDepth(img.y + img.displayHeight);
     }
-    this.createSkyline();
-  }
-
-  /** Haritanın üstünde uzak Berlin: akşam göğü + TV Kulesi silueti */
-  private createSkyline() {
-    this.add
-      .rectangle(0, -TILE * 7, MAP_W * TILE, TILE * 7, 0x3a3050)
-      .setOrigin(0)
-      .setDepth(-100);
-    this.add
-      .image(5 * TILE, -TILE * 6, "tvTower")
-      .setOrigin(0)
-      .setDepth(-50); // ağaç sırasının arkasında kalır
   }
 
   private createBench() {
@@ -230,12 +229,22 @@ export class GardenScene extends Phaser.Scene {
     this.cat.on("pointerdown", () => this.petCat());
   }
 
+  /**
+   * Ekran boyutuna göre zoom: kısa kenarda ~20 tile görünsün.
+   * Telefonda (390px) ~1.5x, masaüstünde ~3x. Boyut değişince yeniden hesaplanır.
+   */
+  private computeZoom() {
+    const short = Math.min(this.scale.width, this.scale.height);
+    const ideal = short / (TILE * 20);
+    return Phaser.Math.Clamp(Math.round(ideal * 4) / 4, 1.5, 3);
+  }
+
   private setupCamera() {
     const cam = this.cameras.main;
-    cam.startFollow(this.player, true, 0.1, 0.1);
-    // Üstte TV Kulesi silueti için ekstra alan
-    cam.setBounds(0, -TILE * 7, MAP_W * TILE, (MAP_H + 7) * TILE);
-    cam.setZoom(3);
+    cam.startFollow(this.player, true, 0.12, 0.12);
+    cam.setBounds(0, -TILE * 3, MAP_W * TILE, (MAP_H + 3) * TILE);
+    cam.setZoom(this.computeZoom());
+    this.scale.on("resize", () => cam.setZoom(this.computeZoom()));
   }
 
   private setupInput() {

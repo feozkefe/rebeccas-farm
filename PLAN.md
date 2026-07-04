@@ -73,13 +73,14 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
       bazen oyuncuya hediye getirir (+5c)
 - [x] Gün/gece tonu (cihaz saatine göre: şafak/gündüz/akşamüstü/gece)
 - [x] Berlin yağmuru: arada 35-70 sn yağar, tüm ekinleri sular, gri ton + damlalar
-- [x] Ses efektleri: Web Audio ile üretilen chiptune sesler (ek/sula/hasat/
-      coin/mır/eşeleme/hediye/yağmur) — dosya yok, kodda
-- [x] Uzakta TV Kulesi silueti (terasın arkasında, akşam göğüyle)
+- [x] Ses sistemi: Web Audio chiptune efektler (ek/sula/hasat/coin/mır/
+      eşeleme/hediye/yağmur) + üretilen lofi müzik (chill'de yavaşlar)
+      + HUD'da 🔊/🔇 düğmesi. Ses ilk dokunuşta açılır (tarayıcı kuralı).
+- [x] Ekrana duyarlı zoom: kısa kenarda ~20 tile (telefon 1.5x, masaüstü 3x)
+- ~~TV Kulesi silueti~~ — eklendi, kullanıcı istemedi, kaldırıldı (4 Tem)
 - [ ] Dekorasyon dükkanı (saksı, cüce, fener)
 - [ ] Anı koleksiyonu: hedeflere ulaşınca açılan ortak fotoğraflar/notlar
       (kullanıcıdan fotoğraf bekleniyor)
-- [ ] Lofi müzik (chill mode için)
 
 ## 6. Zaman planı
 
