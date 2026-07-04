@@ -9,9 +9,12 @@ import {
   MAP_OBJECTS,
 } from "../data/mapLayout";
 import { PlantSystem, type Plot, type InteractResult } from "../systems/PlantSystem";
+import { SaveSystem } from "../systems/SaveSystem";
 
 const PLAYER_SPEED = 80;
 const CAT_NAME = "Spicey";
+const BENCH_TILE = { tx: 8, ty: 6 }; // terasta, gazebonun yanı
+const CHILL_MS = 60_000;
 
 /** Rebecca'nın boş boş gezerken söyledikleri — İngilizce + arada B2 Türkçe karışık */
 const IDLE_LINES = [
@@ -56,20 +59,39 @@ const LINES = {
     `${CAT_NAME}, gel buraya! Come here!`,
     "Such a pretty calico. Çok tatlısın sen.",
   ],
+  catAsleep: () => [
+    `Shhh... ${CAT_NAME} is sleeping. Uyuyor, rahatsız etme.`,
+    "Sweet dreams, kedicik.",
+  ],
+  chillStart: () => [
+    "Time to chill... Biraz keyif zamanı.",
+    "Rolling one... Şimdi dinlenmek lazım.",
+    "Ahh, perfect spot. En sevdiğim köşe.",
+  ],
+  chillVibe: () => [
+    "So relaxing... Çok rahatım şu an.",
+    "The plants grow faster when I'm happy. Bilimsel gerçek.",
+    "Look at the sky... Gökyüzü ne güzel.",
+  ],
 };
 
 /**
  * Ana bahçe sahnesi — yerleşim reference/garden/ fotoğraflarından.
  * Tap-to-move + bağlamsal aksiyon: plota dokun → Rebecca oraya yürür,
- * varınca eker/sular/hasat eder. HUD ayrı sahnede (UI).
+ * varınca eker/sular/hasat eder. Bankta chill mode (büyüme 2x).
+ * Durum localStorage'a kaydedilir; kapalıyken büyüme devam eder.
  */
 export class GardenScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private cat!: Phaser.Physics.Arcade.Sprite;
   private moveTarget: Phaser.Math.Vector2 | null = null;
   private pendingPlot: Plot | null = null;
+  private pendingBench = false;
   private catTimer = 0;
+  private catAsleep = false;
+  private catZzz: Phaser.Time.TimerEvent | null = null;
   private idleTimer = 0;
+  private chillNoteTimer = 0;
   private plants!: PlantSystem;
   private bubble: Phaser.GameObjects.Container | null = null;
   private bubbleEvent: Phaser.Time.TimerEvent | null = null;
@@ -79,21 +101,26 @@ export class GardenScene extends Phaser.Scene {
   }
 
   create() {
-    if (this.registry.get("coins") === undefined) {
-      this.registry.set("coins", 20);
-      this.registry.set("seedIndex", 0);
-    }
+    const save = SaveSystem.load();
+    this.registry.set("coins", save?.coins ?? 20);
+    this.registry.set("seedIndex", save?.seedIndex ?? 0);
+    this.registry.set("chillUntil", save?.chillUntil ?? 0);
 
     const soilImages = this.createGround();
     this.createObjects();
+    this.createBench();
     this.createPlayer();
     this.createCat();
     this.setupCamera();
     this.plants = new PlantSystem(this, buildPlotTiles(), soilImages);
+    if (save) this.plants.restore(save.crops);
     this.setupInput();
+    this.setupAutosave();
     this.scene.launch("UI");
     this.resetIdleTimer();
   }
+
+  // ---------- kurulum ----------
 
   /** Zemini çizer; plot olabilecek toprak tile'larının image'larını döndürür. */
   private createGround(): Map<string, Phaser.GameObjects.Image> {
@@ -118,6 +145,35 @@ export class GardenScene extends Phaser.Scene {
         .setOrigin(obj.originX ?? 0, obj.originY ?? 0);
       img.setDepth(img.y + img.displayHeight);
     }
+  }
+
+  private createBench() {
+    const bench = this.add
+      .image(BENCH_TILE.tx * TILE, BENCH_TILE.ty * TILE, "bench")
+      .setOrigin(0);
+    bench.setDepth(bench.y + bench.displayHeight);
+    bench.setInteractive({ useHandCursor: true });
+    bench.on("pointerdown", () => {
+      this.pendingBench = true;
+      this.pendingPlot = null;
+      const target = this.benchSeat();
+      if (this.playerNear(target, 20)) {
+        this.moveTarget = null;
+        this.player.setVelocity(0);
+        this.startChill();
+      } else {
+        this.moveTarget = target;
+        this.physics.moveTo(this.player, target.x, target.y, PLAYER_SPEED);
+      }
+    });
+  }
+
+  /** Bankın oturma noktası (dünya koordinatı) */
+  private benchSeat() {
+    return new Phaser.Math.Vector2(
+      BENCH_TILE.tx * TILE + 16,
+      BENCH_TILE.ty * TILE + 6
+    );
   }
 
   private createPlayer() {
@@ -150,6 +206,7 @@ export class GardenScene extends Phaser.Scene {
 
       const plot = this.plants.getPlotAt(tx, ty);
       this.pendingPlot = plot ?? null;
+      if (plot) this.pendingBench = false;
       // Plota dokunulduysa hedef plotun hemen altı (toprağı ezmesin)
       const target = plot
         ? new Phaser.Math.Vector2(tx * TILE + TILE / 2, (ty + 1) * TILE + 6)
@@ -165,6 +222,30 @@ export class GardenScene extends Phaser.Scene {
       this.physics.moveTo(this.player, target.x, target.y, PLAYER_SPEED);
     });
   }
+
+  private setupAutosave() {
+    this.time.addEvent({
+      delay: 5000,
+      loop: true,
+      callback: () => this.saveNow(),
+    });
+    // Sekme kapanırken / arka plana düşerken son durumu yaz
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") this.saveNow();
+    });
+  }
+
+  private saveNow() {
+    SaveSystem.save({
+      coins: (this.registry.get("coins") as number) ?? 0,
+      seedIndex: (this.registry.get("seedIndex") as number) ?? 0,
+      chillUntil: (this.registry.get("chillUntil") as number) ?? 0,
+      crops: this.plants.serialize(),
+      savedAt: Date.now(),
+    });
+  }
+
+  // ---------- aksiyonlar ----------
 
   private playerNear(point: Phaser.Math.Vector2, dist: number) {
     return (
@@ -194,6 +275,7 @@ export class GardenScene extends Phaser.Scene {
         this.showBubble(pick(LINES.noCoins()));
         break;
     }
+    this.saveNow();
     this.resetIdleTimer();
   }
 
@@ -210,12 +292,47 @@ export class GardenScene extends Phaser.Scene {
       onComplete: () => heart.destroy(),
     });
     if (this.playerNear(new Phaser.Math.Vector2(this.cat.x, this.cat.y), 48)) {
-      this.showBubble(Phaser.Math.RND.pick(LINES.cat()));
+      this.showBubble(
+        Phaser.Math.RND.pick(this.catAsleep ? LINES.catAsleep() : LINES.cat())
+      );
       this.resetIdleTimer();
     }
   }
 
-  /** Rebecca'nın üstünde konuşma balonu gösterir; öncekini iptal eder. */
+  /** Bankta oturma → duman → chill mode (60 sn, büyüme 2x) */
+  private startChill() {
+    const seat = this.benchSeat();
+    this.player.setPosition(seat.x, seat.y - 6); // banka otur
+    this.showBubble(Phaser.Math.RND.pick(LINES.chillStart()));
+    this.resetIdleTimer();
+
+    // Sarma + minik duman bulutları
+    for (let i = 0; i < 4; i++) {
+      this.time.delayedCall(600 + i * 700, () => {
+        const puff = this.add
+          .circle(this.player.x + 5, this.player.y - 6, 1.5, 0xcccccc, 0.8)
+          .setDepth(10000);
+        this.tweens.add({
+          targets: puff,
+          y: puff.y - 10,
+          alpha: 0,
+          scale: 2.5,
+          duration: 1200,
+          onComplete: () => puff.destroy(),
+        });
+      });
+    }
+
+    this.registry.set("chillUntil", Date.now() + CHILL_MS);
+    this.saveNow();
+  }
+
+  private isChilling() {
+    return Date.now() < ((this.registry.get("chillUntil") as number) ?? 0);
+  }
+
+  // ---------- konuşma balonu ----------
+
   private showBubble(text: string) {
     this.bubble?.destroy();
     this.bubbleEvent?.remove();
@@ -263,10 +380,14 @@ export class GardenScene extends Phaser.Scene {
     this.idleTimer = Phaser.Math.Between(18_000, 40_000);
   }
 
+  // ---------- update döngüsü ----------
+
   update(_time: number, delta: number) {
     this.updatePlayerMovement();
-    this.updateCatWander(delta);
+    this.updateWalkAnimation();
+    this.updateCat(delta);
     this.updateIdleChatter(delta);
+    this.updateChillNotes(delta);
     this.plants.update();
     this.positionBubble();
     this.player.setDepth(this.player.y + this.player.displayHeight / 2);
@@ -287,30 +408,115 @@ export class GardenScene extends Phaser.Scene {
       if (this.pendingPlot) {
         this.resolvePlotAction(this.pendingPlot);
         this.pendingPlot = null;
+      } else if (this.pendingBench) {
+        this.pendingBench = false;
+        this.startChill();
       }
     }
   }
 
-  private updateCatWander(delta: number) {
-    this.catTimer -= delta;
-    if (this.catTimer <= 0) {
-      if (this.cat.body!.velocity.length() > 0) {
-        this.cat.setVelocity(0);
-        this.catTimer = Phaser.Math.Between(2000, 6000); // dinlenme
-      } else {
-        const tx = Phaser.Math.Between(3, MAP_W - 3) * TILE;
-        const ty = Phaser.Math.Between(10, MAP_H - 3) * TILE;
-        this.physics.moveTo(this.cat, tx, ty, 40);
-        this.catTimer = Phaser.Math.Between(1000, 3000); // yürüme süresi
-      }
+  private updateWalkAnimation() {
+    const v = this.player.body!.velocity;
+    if (v.length() > 1) {
+      this.player.anims.play("walk", true);
+      if (Math.abs(v.x) > 10) this.player.setFlipX(v.x < 0);
+    } else if (this.player.anims.isPlaying) {
+      this.player.anims.stop();
+      this.player.setTexture("player");
     }
+  }
+
+  /** Kedi: dolaş → dinlen → arada kıvrılıp uyu (Zzz) */
+  private updateCat(delta: number) {
+    this.catTimer -= delta;
+    if (this.catTimer > 0) return;
+
+    if (this.catAsleep) {
+      // Uyandı
+      this.catAsleep = false;
+      this.cat.setTexture("cat");
+      this.catZzz?.remove();
+      this.catZzz = null;
+      this.catTimer = Phaser.Math.Between(1000, 3000);
+      return;
+    }
+
+    if (this.cat.body!.velocity.length() > 0) {
+      // Yürüyüş bitti → dinlen ya da uyu
+      this.cat.setVelocity(0);
+      if (Phaser.Math.Between(0, 100) < 35) {
+        this.fallAsleep();
+      } else {
+        this.catTimer = Phaser.Math.Between(2000, 6000);
+      }
+    } else {
+      const tx = Phaser.Math.Between(3, MAP_W - 3) * TILE;
+      const ty = Phaser.Math.Between(10, MAP_H - 3) * TILE;
+      this.physics.moveTo(this.cat, tx, ty, 40);
+      this.catTimer = Phaser.Math.Between(1000, 3000);
+    }
+  }
+
+  private fallAsleep() {
+    this.catAsleep = true;
+    this.cat.setTexture("cat_sleep");
+    this.catTimer = Phaser.Math.Between(10_000, 20_000);
+    // Süzülen Zzz'ler
+    this.catZzz = this.time.addEvent({
+      delay: 1500,
+      loop: true,
+      callback: () => {
+        const z = this.add
+          .text(this.cat.x + 6, this.cat.y - 8, "z", {
+            fontFamily: "monospace",
+            fontSize: "8px",
+            color: "#7a8ac8",
+          })
+          .setOrigin(0.5)
+          .setDepth(10000);
+        this.tweens.add({
+          targets: z,
+          y: z.y - 10,
+          x: z.x + 3,
+          alpha: 0,
+          duration: 1400,
+          onComplete: () => z.destroy(),
+        });
+      },
+    });
   }
 
   private updateIdleChatter(delta: number) {
     this.idleTimer -= delta;
     if (this.idleTimer <= 0) {
-      this.showBubble(Phaser.Math.RND.pick(IDLE_LINES));
+      this.showBubble(
+        Phaser.Math.RND.pick(this.isChilling() ? LINES.chillVibe() : IDLE_LINES)
+      );
       this.resetIdleTimer();
     }
+  }
+
+  /** Chill sırasında oyuncunun etrafında süzülen notalar/pırıltılar */
+  private updateChillNotes(delta: number) {
+    if (!this.isChilling()) return;
+    this.chillNoteTimer -= delta;
+    if (this.chillNoteTimer > 0) return;
+    this.chillNoteTimer = Phaser.Math.Between(800, 1600);
+    const note = this.add
+      .text(
+        this.player.x + Phaser.Math.Between(-12, 12),
+        this.player.y - 4,
+        Phaser.Math.RND.pick(["♪", "♫", "✿", "~"]),
+        { fontFamily: "monospace", fontSize: "8px", color: "#c8a0e8" }
+      )
+      .setOrigin(0.5)
+      .setDepth(10000);
+    this.tweens.add({
+      targets: note,
+      y: note.y - 14,
+      alpha: 0,
+      duration: 1800,
+      onComplete: () => note.destroy(),
+    });
   }
 }

@@ -15,8 +15,24 @@ export class BootScene extends Phaser.Scene {
     this.createGroundTextures();
     this.createObjectTextures();
     this.createCharacterTextures();
+    this.createWalkAnimation();
     for (const p of PLANTS) this.createPlantTextures(p);
     this.scene.start("Garden");
+  }
+
+  /** El yapımı sprite'a 2 karelik bacak animasyonu (player_w1/w2) */
+  private createWalkAnimation() {
+    this.anims.create({
+      key: "walk",
+      frames: [
+        { key: "player_w1" },
+        { key: "player" },
+        { key: "player_w2" },
+        { key: "player" },
+      ],
+      frameRate: 7,
+      repeat: -1,
+    });
   }
 
   /** Bir bitkinin 4 büyüme aşamasının dokularını üretir: plant_{id}_{0..3} */
@@ -267,18 +283,70 @@ export class BootScene extends Phaser.Scene {
     g.lineBetween(16, 3, 0, 13);
     g.generateTexture("fence", 16, 16);
     g.destroy();
+
+    // Ahşap bank (chill köşesi) — 32x18
+    g = this.gfx();
+    g.fillStyle(0x8a6238); // sırtlık
+    g.fillRect(2, 0, 28, 4);
+    g.fillStyle(0x9a7448); // oturak
+    g.fillRect(0, 7, 32, 5);
+    g.fillStyle(0x6b4a2f); // ayaklar
+    g.fillRect(2, 12, 3, 6);
+    g.fillRect(27, 12, 3, 6);
+    g.lineStyle(1, 0x7d5c38); // tahta çizgileri
+    g.lineBetween(0, 9, 32, 9);
+    g.generateTexture("bench", 32, 18);
+    g.destroy();
   }
 
   private createCharacterTextures() {
-    // Rebecca — 16x24: sarı toplanmış saç, mavi gözler,
-    // turuncu fitilli tişört, yırtık açık mavi kot şort
+    // Rebecca — 3 kare: dururken + 2 yürüme (bacaklar sırayla kalkar)
+    this.drawRebecca("player", 0);
+    this.drawRebecca("player_w1", 1); // sol bacak havada
+    this.drawRebecca("player_w2", 2); // sağ bacak havada
+
+    // Kaliko kedi (beyaz + turuncu + siyah)
+    const c = this.gfx();
+    c.fillStyle(0xf5f0e8);
+    c.fillRect(2, 6, 12, 8);
+    c.fillRect(4, 2, 8, 6);
+    c.fillStyle(0xe8963c);
+    c.fillRect(4, 2, 3, 3);
+    c.fillRect(10, 8, 4, 4);
+    c.fillStyle(0x2b2b2b);
+    c.fillRect(9, 2, 3, 3);
+    c.fillRect(3, 10, 3, 3);
+    c.fillRect(13, 4, 2, 8);
+    c.generateTexture("cat", 16, 16);
+    c.destroy();
+
+    // Spicey uyurken — kıvrılmış, gözler kapalı, kuyruk önde
+    const s = this.gfx();
+    s.fillStyle(0xf5f0e8); // gövde (yumak)
+    s.fillEllipse(8, 10, 13, 8);
+    s.fillStyle(0xe8963c); // turuncu leke
+    s.fillRect(9, 7, 4, 3);
+    s.fillStyle(0x2b2b2b); // siyah leke + kuyruk (öne sarılı)
+    s.fillRect(3, 9, 3, 2);
+    s.fillRect(3, 12, 10, 2);
+    s.fillStyle(0xe8963c); // kulaklar
+    s.fillRect(5, 5, 2, 2);
+    s.fillStyle(0x2b2b2b);
+    s.fillRect(8, 5, 2, 2);
+    s.lineStyle(1, 0x8a8078); // kapalı gözler
+    s.lineBetween(5, 8, 7, 8);
+    s.generateTexture("cat_sleep", 16, 16);
+    s.destroy();
+  }
+
+  /** legPhase: 0 duruş, 1 sol bacak havada, 2 sağ bacak havada */
+  private drawRebecca(key: string, legPhase: number) {
     const g = this.gfx();
     g.fillStyle(0xe6c85a); // sarı saç
     g.fillRect(4, 0, 8, 5);
     g.fillRect(3, 1, 1, 4); // yanlar
     g.fillRect(12, 1, 1, 4);
-    g.fillRect(6, -0, 4, 1);
-    g.fillStyle(0xd4b048); // topuz (arkada, üstte küçük çıkıntı)
+    g.fillStyle(0xd4b048); // topuz (üstte küçük çıkıntı)
     g.fillRect(6, 0, 4, 2);
     g.fillStyle(0xf0c8a0); // yüz
     g.fillRect(4, 5, 8, 5);
@@ -296,28 +364,16 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xf0c8a0); // yırtık: ten görünen pikseller
     g.fillRect(5, 18, 1, 1);
     g.fillRect(10, 19, 1, 1);
-    g.fillStyle(0xf0c8a0); // bacaklar (şort kısa)
-    g.fillRect(4, 20, 3, 3);
-    g.fillRect(9, 20, 3, 3);
-    g.fillStyle(0x7a6a55); // sandalet
-    g.fillRect(4, 23, 3, 1);
-    g.fillRect(9, 23, 3, 1);
-    g.generateTexture("player", 16, 24);
+    // Bacaklar + sandalet — yürürken biri 1px yukarıda
+    const leftUp = legPhase === 1 ? 1 : 0;
+    const rightUp = legPhase === 2 ? 1 : 0;
+    g.fillStyle(0xf0c8a0);
+    g.fillRect(4, 20 - leftUp, 3, 3);
+    g.fillRect(9, 20 - rightUp, 3, 3);
+    g.fillStyle(0x7a6a55);
+    g.fillRect(4, 23 - leftUp, 3, 1);
+    g.fillRect(9, 23 - rightUp, 3, 1);
+    g.generateTexture(key, 16, 24);
     g.destroy();
-
-    // Kaliko kedi (beyaz + turuncu + siyah)
-    const c = this.gfx();
-    c.fillStyle(0xf5f0e8);
-    c.fillRect(2, 6, 12, 8);
-    c.fillRect(4, 2, 8, 6);
-    c.fillStyle(0xe8963c);
-    c.fillRect(4, 2, 3, 3);
-    c.fillRect(10, 8, 4, 4);
-    c.fillStyle(0x2b2b2b);
-    c.fillRect(9, 2, 3, 3);
-    c.fillRect(3, 10, 3, 3);
-    c.fillRect(13, 4, 2, 8);
-    c.generateTexture("cat", 16, 16);
-    c.destroy();
   }
 }

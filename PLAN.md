@@ -59,13 +59,14 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
 - [x] Coin sistemi + tohum seçici HUD (`src/ui/HUD.ts`)
 - [x] Konuşma balonları: İngilizce + arada B2 Türkçe karışık
 - [x] 6 yatak, düzenli 2x3 ızgara (36 ekim karesi)
-- [ ] Yürüme animasyonu (el yapımı sprite'a 2-3 kare)
-- [ ] Kedi: güneşlenme/uyuma davranışları
-- [ ] Joint mekaniği: banka otur → sarma animasyonu → chill mode
-      (dreamy filter, lofi müzik, büyüme 2x)
-- [ ] Doğum günü sahnesi: ilk açılışta kutlama + kişisel mesaj
-- [ ] Save/load (localStorage) + PWA (manifest ✅, ikon, fullscreen)
-- [ ] Deploy
+- [x] Yürüme animasyonu (2 karelik bacak hareketi + yöne göre flip)
+- [x] Kedi: dolaşma + kıvrılıp uyuma (Zzz baloncukları)
+- [x] Joint mekaniği: banka otur → duman bulutları → chill mode
+      (mor dreamy filtre, süzülen notalar, büyüme 2x, 60 sn) — müzik sonra
+- [x] Save/load (localStorage, 5 sn'de bir otomatik) + kapalıyken büyüme
+- [x] PWA: manifest, domates ikonu (192/512), service worker (offline)
+- [ ] Doğum günü sahnesi: ilk açılışta kutlama + kişisel mesaj (EN SON — mesaj bekleniyor)
+- [ ] Deploy (Vercel/Netlify — kullanıcı hesabı gerekiyor)
 
 ### V2 — Zaman kalırsa (hafta 3)
 - [ ] Kedi yaramazlıkları: yatağı eşeler, bazen "hediye" getirir
@@ -91,7 +92,7 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
 - [ ] Bahçede yetiştirdiği bitkilerin listesi → `reference/plants.md` (veya söyle, ben yazayım)
 - [ ] Doğum günü mesajı metni → `reference/birthday-message.md`
 - [ ] (Opsiyonel) Anı fotoğrafları → `reference/memories/`
-- [ ] Oyunun adı — şimdilik çalışma adı: **Rebecca's Farm**
+- [x] Oyunun adı: **Rebecca's Farm** (kesinleşti)
 
 > `reference/` klasörü .gitignore'a eklenmedi ama deploy'a dahil edilmiyor
 > (sadece `public/` deploy'a girer). Kişisel fotoğraflar oyuna girecekse

@@ -22,3 +22,12 @@ const config: Phaser.Types.Core.GameConfig = {
 const game = new Phaser.Game(config);
 // Konsoldan/testten erişim için (debug)
 (window as unknown as { game: Phaser.Game }).game = game;
+
+// PWA: service worker sadece production build'de (dev'de HMR ile çakışır)
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // kayıt başarısızsa oyun normal çalışmaya devam eder
+    });
+  });
+}

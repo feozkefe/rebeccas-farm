@@ -1,12 +1,13 @@
 import Phaser from "phaser";
 import { TILE } from "../data/mapLayout";
 import { PLANTS, MATURE_STAGE, type PlantDef } from "../data/plants";
+import type { CropSave } from "./SaveSystem";
 
 interface PlantedCrop {
   def: PlantDef;
   stage: number;
   watered: boolean;
-  /** son sulamanın zamanı — büyüme bundan stageMs sonra */
+  /** son sulama zamanı (epoch ms) — büyüme bundan stageMs sonra */
   wateredAt: number;
   sprite: Phaser.GameObjects.Image;
 }
@@ -29,7 +30,8 @@ const WATERED_TINT = 0x9a86c8; // ıslak toprak: hafif koyu/mor ton
 /**
  * Ekim → sulama → büyüme → hasat döngüsü.
  * Her aşama için bir kez sulamak gerekiyor; sulanınca stageMs sonra
- * bir sonraki aşamaya geçer. Coin, kayıt defterinde (registry) tutulur.
+ * bir sonraki aşamaya geçer. Zaman epoch ms — oyun kapalıyken de işler.
+ * Chill mode aktifken (registry "chillUntil") büyüme 2x hızlı.
  */
 export class PlantSystem {
   private plots = new Map<string, Plot>();
@@ -54,31 +56,45 @@ export class PlantSystem {
 
   /** Oyuncu plota ulaştığında çağrılır; bağlama göre ek/sula/hasat yapar. */
   interact(plot: Plot): InteractResult {
-    const now = this.scene.time.now;
-    if (!plot.crop) return this.plantSeed(plot, now);
+    if (!plot.crop) return this.plantSeed(plot);
 
     const crop = plot.crop;
     if (crop.stage >= MATURE_STAGE) return this.harvest(plot);
     if (!crop.watered) {
       crop.watered = true;
-      crop.wateredAt = now;
+      crop.wateredAt = Date.now();
       plot.soilImage.setTint(WATERED_TINT);
       return { action: "water", def: crop.def };
     }
     return { action: "growing", def: crop.def };
   }
 
-  private plantSeed(plot: Plot, now: number): InteractResult {
+  private plantSeed(plot: Plot): InteractResult {
     const def = this.selectedSeed();
     const coins = this.scene.registry.get("coins") as number;
     if (coins < def.seedPrice) return { action: "noCoins", def };
 
     this.scene.registry.set("coins", coins - def.seedPrice);
-    const sprite = this.scene.add
-      .image(plot.tx * TILE + TILE / 2, plot.ty * TILE + TILE / 2, `plant_${def.id}_0`)
-      .setDepth(plot.ty * TILE + TILE);
-    plot.crop = { def, stage: 0, watered: false, wateredAt: now, sprite };
+    plot.crop = this.createCrop(plot, def, 0, false, Date.now());
     return { action: "plant", def };
+  }
+
+  private createCrop(
+    plot: Plot,
+    def: PlantDef,
+    stage: number,
+    watered: boolean,
+    wateredAt: number
+  ): PlantedCrop {
+    const sprite = this.scene.add
+      .image(
+        plot.tx * TILE + TILE / 2,
+        plot.ty * TILE + TILE / 2,
+        `plant_${def.id}_${stage}`
+      )
+      .setDepth(plot.ty * TILE + TILE);
+    if (watered) plot.soilImage.setTint(WATERED_TINT);
+    return { def, stage, watered, wateredAt, sprite };
   }
 
   private harvest(plot: Plot): InteractResult {
@@ -98,11 +114,14 @@ export class PlantSystem {
 
   /** Büyüme tick'i — sulanmış ekinler süre dolunca aşama atlar. */
   update() {
-    const now = this.scene.time.now;
+    const now = Date.now();
+    const chillUntil = (this.scene.registry.get("chillUntil") as number) ?? 0;
+    const chill = now < chillUntil;
     for (const plot of this.plots.values()) {
       const crop = plot.crop;
       if (!crop || !crop.watered || crop.stage >= MATURE_STAGE) continue;
-      if (now - crop.wateredAt >= crop.def.stageMs) {
+      const required = chill ? crop.def.stageMs / 2 : crop.def.stageMs;
+      if (now - crop.wateredAt >= required) {
         crop.stage++;
         crop.watered = false;
         crop.sprite.setTexture(`plant_${crop.def.id}_${crop.stage}`);
@@ -118,6 +137,35 @@ export class PlantSystem {
           });
         }
       }
+    }
+  }
+
+  /** Kayıt için ekin durumlarını döker. */
+  serialize(): CropSave[] {
+    const out: CropSave[] = [];
+    for (const plot of this.plots.values()) {
+      if (!plot.crop) continue;
+      const c = plot.crop;
+      out.push({
+        tx: plot.tx,
+        ty: plot.ty,
+        id: c.def.id,
+        stage: c.stage,
+        watered: c.watered,
+        wateredAt: c.wateredAt,
+      });
+    }
+    return out;
+  }
+
+  /** Kayıttan ekinleri geri yükler; geçen süre update() ile işlenir. */
+  restore(crops: CropSave[]) {
+    for (const s of crops) {
+      const plot = this.getPlotAt(s.tx, s.ty);
+      const def = PLANTS.find((p) => p.id === s.id);
+      if (!plot || plot.crop || !def) continue;
+      const stage = Phaser.Math.Clamp(s.stage, 0, MATURE_STAGE);
+      plot.crop = this.createCrop(plot, def, stage, s.watered, s.wateredAt);
     }
   }
 }
