@@ -17,7 +17,6 @@ export interface SaveData {
   coins: number;
   seedIndex: number;
   crops: CropSave[];
-  chillUntil: number; // epoch ms — chill mode bitişi
   savedAt: number;
 }
 

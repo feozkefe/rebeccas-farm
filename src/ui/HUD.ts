@@ -89,9 +89,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   update() {
-    const chillUntil = (this.registry.get("chillUntil") as number) ?? 0;
-    const remaining = chillUntil - Date.now();
-    const active = remaining > 0;
+    const active = (this.registry.get("chilling") as boolean) ?? false;
     this.chillOverlay.setVisible(active);
     this.chillGlow.setVisible(active);
     this.chillText.setVisible(active);
@@ -99,9 +97,7 @@ export class UIScene extends Phaser.Scene {
       // Yumuşak nefes alan tül efekti
       const pulse = 0.12 + 0.04 * Math.sin(this.time.now / 900);
       this.chillOverlay.setFillStyle(0x9a6ac8, pulse);
-      this.chillText.setText(
-        `🌿 chill mode — plants grow 2x (${Math.ceil(remaining / 1000)}s)`
-      );
+      this.chillText.setText("🌿 chill mode — plants grow 2x");
     }
   }
 }

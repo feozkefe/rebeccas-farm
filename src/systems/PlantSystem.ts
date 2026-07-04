@@ -115,8 +115,7 @@ export class PlantSystem {
   /** Büyüme tick'i — sulanmış ekinler süre dolunca aşama atlar. */
   update() {
     const now = Date.now();
-    const chillUntil = (this.scene.registry.get("chillUntil") as number) ?? 0;
-    const chill = now < chillUntil;
+    const chill = (this.scene.registry.get("chilling") as boolean) ?? false;
     for (const plot of this.plots.values()) {
       const crop = plot.crop;
       if (!crop || !crop.watered || crop.stage >= MATURE_STAGE) continue;

@@ -14,7 +14,6 @@ import { SaveSystem } from "../systems/SaveSystem";
 const PLAYER_SPEED = 80;
 const CAT_NAME = "Spicey";
 const BENCH_TILE = { tx: 8, ty: 6 }; // terasta, gazebonun yanı
-const CHILL_MS = 60_000;
 
 /** Rebecca'nın boş boş gezerken söyledikleri — İngilizce + arada B2 Türkçe karışık */
 const IDLE_LINES = [
@@ -104,7 +103,7 @@ export class GardenScene extends Phaser.Scene {
     const save = SaveSystem.load();
     this.registry.set("coins", save?.coins ?? 20);
     this.registry.set("seedIndex", save?.seedIndex ?? 0);
-    this.registry.set("chillUntil", save?.chillUntil ?? 0);
+    this.registry.set("chilling", false);
 
     const soilImages = this.createGround();
     this.createObjects();
@@ -239,7 +238,6 @@ export class GardenScene extends Phaser.Scene {
     SaveSystem.save({
       coins: (this.registry.get("coins") as number) ?? 0,
       seedIndex: (this.registry.get("seedIndex") as number) ?? 0,
-      chillUntil: (this.registry.get("chillUntil") as number) ?? 0,
       crops: this.plants.serialize(),
       savedAt: Date.now(),
     });
@@ -299,8 +297,9 @@ export class GardenScene extends Phaser.Scene {
     }
   }
 
-  /** Bankta oturma → duman → chill mode (60 sn, büyüme 2x) */
+  /** Bankta oturma → duman → chill mode (oturduğu sürece büyüme 2x) */
   private startChill() {
+    if (this.isChilling()) return;
     const seat = this.benchSeat();
     this.player.setPosition(seat.x, seat.y - 6); // banka otur
     this.showBubble(Phaser.Math.RND.pick(LINES.chillStart()));
@@ -309,6 +308,7 @@ export class GardenScene extends Phaser.Scene {
     // Sarma + minik duman bulutları
     for (let i = 0; i < 4; i++) {
       this.time.delayedCall(600 + i * 700, () => {
+        if (!this.isChilling()) return;
         const puff = this.add
           .circle(this.player.x + 5, this.player.y - 6, 1.5, 0xcccccc, 0.8)
           .setDepth(10000);
@@ -323,12 +323,23 @@ export class GardenScene extends Phaser.Scene {
       });
     }
 
-    this.registry.set("chillUntil", Date.now() + CHILL_MS);
-    this.saveNow();
+    this.registry.set("chilling", true);
+  }
+
+  /** Banktan kalkınca chill biter */
+  private endChill() {
+    this.registry.set("chilling", false);
+    this.showBubble(
+      Phaser.Math.RND.pick([
+        "Okay, back to the garden! Hadi işe.",
+        "That was nice. Çok iyi geldi.",
+      ])
+    );
+    this.resetIdleTimer();
   }
 
   private isChilling() {
-    return Date.now() < ((this.registry.get("chillUntil") as number) ?? 0);
+    return (this.registry.get("chilling") as boolean) ?? false;
   }
 
   // ---------- konuşma balonu ----------
@@ -388,6 +399,10 @@ export class GardenScene extends Phaser.Scene {
     this.updateCat(delta);
     this.updateIdleChatter(delta);
     this.updateChillNotes(delta);
+    // Banktan kalkınca (uzaklaşınca) chill biter
+    if (this.isChilling() && !this.playerNear(this.benchSeat(), 14)) {
+      this.endChill();
+    }
     this.plants.update();
     this.positionBubble();
     this.player.setDepth(this.player.y + this.player.displayHeight / 2);
