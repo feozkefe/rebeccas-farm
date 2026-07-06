@@ -61,8 +61,9 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
 - [x] 6 yatak, düzenli 2x3 ızgara (36 ekim karesi)
 - [x] Yürüme animasyonu (2 karelik bacak hareketi + yöne göre flip)
 - [x] Kedi: dolaşma + kıvrılıp uyuma (Zzz baloncukları)
-- [x] Joint mekaniği: banka otur → duman bulutları → chill mode
-      (mor dreamy filtre, süzülen notalar, büyüme 2x, 60 sn) — müzik sonra
+- [x] Joint mekaniği: banka otur → **sarma mini oyunu** (timing bar,
+      3 adım: kağıt/serpiştir/sar) → duman → chill mode (mor dreamy filtre,
+      süzülen notalar, reverb'lü yavaş müzik, büyüme 2x, kalkınca biter)
 - [x] Save/load (localStorage, 5 sn'de bir otomatik) + kapalıyken büyüme
 - [x] PWA: manifest, domates ikonu (192/512), service worker (offline)
 - [ ] Doğum günü sahnesi: ilk açılışta kutlama + kişisel mesaj (EN SON — mesaj bekleniyor)

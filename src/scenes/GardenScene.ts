@@ -13,6 +13,7 @@ import { SaveSystem } from "../systems/SaveSystem";
 import { Sfx } from "../systems/Sfx";
 import { Music } from "../systems/Music";
 import { audioEngine } from "../systems/AudioEngine";
+import { UIScene } from "../ui/HUD";
 
 const PLAYER_SPEED = 80;
 const CAT_NAME = "Spicey";
@@ -194,13 +195,14 @@ export class GardenScene extends Phaser.Scene {
     bench.setDepth(bench.y + bench.displayHeight);
     bench.setInteractive({ useHandCursor: true });
     bench.on("pointerdown", () => {
+      if (this.registry.get("rolling") || this.isChilling()) return;
       this.pendingBench = true;
       this.pendingPlot = null;
       const target = this.benchSeat();
       if (this.playerNear(target, 20)) {
         this.moveTarget = null;
         this.player.setVelocity(0);
-        this.startChill();
+        this.beginRolling();
       } else {
         this.moveTarget = target;
         this.physics.moveTo(this.player, target.x, target.y, PLAYER_SPEED);
@@ -249,6 +251,8 @@ export class GardenScene extends Phaser.Scene {
 
   private setupInput() {
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      // Sarma mini oyunu açıkken dokunuşlar oyun paneline gider
+      if (this.registry.get("rolling")) return;
       const world = pointer.positionToCamera(
         this.cameras.main
       ) as Phaser.Math.Vector2;
@@ -355,12 +359,22 @@ export class GardenScene extends Phaser.Scene {
     }
   }
 
-  /** Bankta oturma → duman → chill mode (oturduğu sürece büyüme 2x) */
-  private startChill() {
-    if (this.isChilling()) return;
+  /** Banka otur → sarma mini oyunu; başarıyla sarınca chill başlar. */
+  private beginRolling() {
+    if (this.isChilling() || this.registry.get("rolling")) return;
     const seat = this.benchSeat();
     this.player.setPosition(seat.x, seat.y - 6); // banka otur
+    this.player.setVelocity(0);
+    this.moveTarget = null;
     this.showBubble(Phaser.Math.RND.pick(LINES.chillStart()));
+    this.resetIdleTimer();
+    const ui = this.scene.get("UI") as UIScene;
+    ui.startRollGame(() => this.startChill());
+  }
+
+  /** Joint sarıldı → duman → chill mode (oturduğu sürece büyüme 2x) */
+  private startChill() {
+    if (this.isChilling()) return;
     this.resetIdleTimer();
 
     // Sarma + minik duman bulutları
@@ -635,7 +649,7 @@ export class GardenScene extends Phaser.Scene {
         this.pendingPlot = null;
       } else if (this.pendingBench) {
         this.pendingBench = false;
-        this.startChill();
+        this.beginRolling();
       }
     }
   }

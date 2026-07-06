@@ -22,9 +22,26 @@ export class Music {
   private chordIndex = 0;
   private nextBarAt = 0; // ctx saatine göre
   private isChill: () => boolean;
+  private reverb: ConvolverNode | null = null;
 
   constructor(isChill: () => boolean) {
     this.isChill = isChill;
+  }
+
+  /** Basit reverb: sönümlenen gürültüden impulse response (bir kez üretilir) */
+  private getReverb(ctx: AudioContext): ConvolverNode {
+    if (this.reverb) return this.reverb;
+    const dur = 2.2;
+    const ir = ctx.createBuffer(2, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = ir.getChannelData(ch);
+      for (let i = 0; i < data.length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2.5);
+      }
+    }
+    this.reverb = ctx.createConvolver();
+    this.reverb.buffer = ir;
+    return this.reverb;
   }
 
   start() {
@@ -58,13 +75,19 @@ export class Music {
     const { ctx, out } = a;
     const chord = CHORDS[this.chordIndex];
 
-    // Müzik yolu: lowpass → hafif gain (efektlerin altında kalsın)
+    // Müzik yolu: lowpass → çıkış; chill'de üstüne yankı (reverb) katmanı
     const bus = ctx.createGain();
     bus.gain.value = chill ? 0.5 : 0.42;
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
     filter.frequency.value = chill ? 650 : 1100;
-    bus.connect(filter).connect(out);
+    bus.connect(filter);
+    filter.connect(out);
+    if (chill) {
+      const wet = ctx.createGain();
+      wet.gain.value = 0.55;
+      filter.connect(this.getReverb(ctx)).connect(wet).connect(out);
+    }
 
     // Akor pedi: yumuşak atak, ölçü boyu sönüş
     for (const freq of chord) {

@@ -1,6 +1,15 @@
 import Phaser from "phaser";
 import { PLANTS } from "../data/plants";
 import { audioEngine } from "../systems/AudioEngine";
+import { Sfx } from "../systems/Sfx";
+
+/** Sarma mini oyunu adımları */
+const ROLL_STEPS = [
+  "Paper out... Kağıdı ser 📄",
+  "Sprinkle it... Serpiştir 🌿",
+  "Roll & lick! Sar, yapıştır 👅",
+];
+const ROLL_BAR_W = 200;
 
 /**
  * HUD — Garden sahnesinin üstünde ayrı, zoom'suz bir sahne olarak çalışır.
@@ -16,6 +25,20 @@ export class UIScene extends Phaser.Scene {
   private chillText!: Phaser.GameObjects.Text;
   private ambientOverlay!: Phaser.GameObjects.Rectangle;
   private rainOverlay!: Phaser.GameObjects.Rectangle;
+  private sfx = new Sfx();
+  // Sarma mini oyunu
+  private rollPanel: Phaser.GameObjects.Container | null = null;
+  private rollZone: Phaser.GameObjects.Rectangle | null = null;
+  private rollTitle!: Phaser.GameObjects.Text;
+  private rollCursor!: Phaser.GameObjects.Rectangle;
+  private rollTarget!: Phaser.GameObjects.Rectangle;
+  private rollDots: Phaser.GameObjects.Arc[] = [];
+  private rollStep = 0;
+  private rollT = 0; // 0..1 imleç konumu
+  private rollDir = 1;
+  private rollTargetStart = 0.4; // 0..1
+  private rollTargetWidth = 0.22;
+  private onRollDone: (() => void) | null = null;
 
   constructor() {
     super("UI");
@@ -114,7 +137,167 @@ export class UIScene extends Phaser.Scene {
     );
   }
 
-  update() {
+  // ---------- sarma mini oyunu ----------
+
+  /**
+   * Timing bar: imleç sağa-sola gider, yeşil bölgedeyken dokun.
+   * 3 başarılı adım = joint sarıldı → onDone (chill başlar).
+   */
+  startRollGame(onDone: () => void) {
+    if (this.rollPanel) return;
+    this.onRollDone = onDone;
+    this.rollStep = 0;
+    this.rollT = 0;
+    this.rollDir = 1;
+    this.registry.set("rolling", true);
+
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    // Dokunuşları yakalayan tam ekran bölge (bahçe input'u registry ile kapalı)
+    this.rollZone = this.add
+      .rectangle(0, 0, w, h, 0x000000, 0.001)
+      .setOrigin(0)
+      .setDepth(19)
+      .setInteractive();
+    this.rollZone.on("pointerdown", () => this.tryRollTap());
+
+    const panel = this.add.container(w / 2, h - 120).setDepth(20);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x2a2038, 0.94);
+    bg.fillRoundedRect(-140, -52, 280, 104, 10);
+    bg.lineStyle(2, 0x9a6ac8, 0.8);
+    bg.strokeRoundedRect(-140, -52, 280, 104, 10);
+    panel.add(bg);
+
+    this.rollTitle = this.add
+      .text(0, -34, ROLL_STEPS[0], {
+        fontFamily: "monospace",
+        fontSize: "13px",
+        color: "#f0e0ff",
+      })
+      .setOrigin(0.5);
+    panel.add(this.rollTitle);
+
+    // Bar zemini
+    const barBg = this.add
+      .rectangle(0, 2, ROLL_BAR_W, 14, 0x1a1426)
+      .setOrigin(0.5);
+    panel.add(barBg);
+
+    // Yeşil hedef bölge + imleç
+    this.rollTarget = this.add
+      .rectangle(0, 2, ROLL_BAR_W * this.rollTargetWidth, 14, 0x5ec850, 0.85)
+      .setOrigin(0, 0.5);
+    panel.add(this.rollTarget);
+    this.rollCursor = this.add
+      .rectangle(-ROLL_BAR_W / 2, 2, 4, 22, 0xffffff)
+      .setOrigin(0.5);
+    panel.add(this.rollCursor);
+
+    // Adım noktaları
+    this.rollDots = [];
+    for (let i = 0; i < 3; i++) {
+      const dot = this.add.circle((i - 1) * 18, 26, 4, 0x4a3a5e);
+      panel.add(dot);
+      this.rollDots.push(dot);
+    }
+
+    const hint = this.add
+      .text(0, 42, "tap when the marker is in the green — yeşilde bas!", {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#b8a8d0",
+      })
+      .setOrigin(0.5);
+    panel.add(hint);
+
+    // Vazgeç düğmesi
+    const close = this.add
+      .text(128, -40, "✕", {
+        fontFamily: "monospace",
+        fontSize: "14px",
+        color: "#d0c0e8",
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    close.on("pointerdown", (_p: unknown, _x: unknown, _y: unknown, ev?: { stopPropagation?: () => void }) => {
+      ev?.stopPropagation?.();
+      this.cancelRollGame();
+    });
+    panel.add(close);
+
+    this.rollPanel = panel;
+    this.randomizeRollTarget();
+  }
+
+  cancelRollGame() {
+    this.rollPanel?.destroy();
+    this.rollZone?.destroy();
+    this.rollPanel = null;
+    this.rollZone = null;
+    this.registry.set("rolling", false);
+  }
+
+  private randomizeRollTarget() {
+    this.rollTargetWidth = 0.24 - this.rollStep * 0.04;
+    this.rollTargetStart = Phaser.Math.FloatBetween(0.12, 0.84 - this.rollTargetWidth);
+    this.rollTarget.setSize(ROLL_BAR_W * this.rollTargetWidth, 14);
+    this.rollTarget.setX(-ROLL_BAR_W / 2 + ROLL_BAR_W * this.rollTargetStart);
+  }
+
+  private tryRollTap() {
+    if (!this.rollPanel) return;
+    const inTarget =
+      this.rollT >= this.rollTargetStart &&
+      this.rollT <= this.rollTargetStart + this.rollTargetWidth;
+    if (!inTarget) {
+      this.sfx.denied();
+      this.tweens.add({
+        targets: this.rollPanel,
+        x: this.rollPanel.x + 5,
+        duration: 45,
+        yoyo: true,
+        repeat: 3,
+      });
+      return;
+    }
+    this.sfx.coin();
+    this.rollDots[this.rollStep].setFillStyle(0x5ec850);
+    this.rollStep++;
+    if (this.rollStep >= ROLL_STEPS.length) {
+      this.rollTitle.setText("Perfect! 🌿✨");
+      this.sfx.gift();
+      const done = this.onRollDone;
+      this.time.delayedCall(650, () => {
+        this.cancelRollGame();
+        done?.();
+      });
+      this.onRollDone = null;
+      return;
+    }
+    this.rollTitle.setText(ROLL_STEPS[this.rollStep]);
+    this.randomizeRollTarget();
+  }
+
+  private updateRollGame(delta: number) {
+    if (!this.rollPanel || this.rollStep >= ROLL_STEPS.length) return;
+    // İmleç ping-pong; her adımda biraz hızlanır
+    const speed = 0.0009 * (1 + this.rollStep * 0.45);
+    this.rollT += this.rollDir * speed * delta;
+    if (this.rollT >= 1) {
+      this.rollT = 1;
+      this.rollDir = -1;
+    } else if (this.rollT <= 0) {
+      this.rollT = 0;
+      this.rollDir = 1;
+    }
+    this.rollCursor.setX(-ROLL_BAR_W / 2 + ROLL_BAR_W * this.rollT);
+  }
+
+  update(_time: number, delta: number) {
+    this.updateRollGame(delta);
     const active = (this.registry.get("chilling") as boolean) ?? false;
     this.chillOverlay.setVisible(active);
     this.chillGlow.setVisible(active);
