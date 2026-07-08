@@ -74,10 +74,42 @@ export class Sfx {
     this.tone(1320, 140, { type: "square", vol: 0.12, delayMs: 70 });
   }
 
+  /** Yumuşacık mırlama: alçak ton + 22Hz titreşim (LFO) + lowpass, kısacık */
   purr() {
-    for (let i = 0; i < 3; i++) {
-      this.tone(85, 130, { type: "sawtooth", vol: 0.12, delayMs: i * 160 });
-    }
+    const a = audioEngine.get();
+    if (!a) return;
+    const { ctx, out } = a;
+    const t0 = ctx.currentTime;
+    const dur = 0.55;
+
+    const carrier = ctx.createOscillator();
+    carrier.type = "triangle";
+    carrier.frequency.value = 72;
+
+    // Mırlama dokusu: ses şiddeti saniyede ~22 kez dalgalanır
+    const amp = ctx.createGain();
+    amp.gain.value = 0.5;
+    const lfo = ctx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.value = 22;
+    const lfoDepth = ctx.createGain();
+    lfoDepth.gain.value = 0.45;
+    lfo.connect(lfoDepth).connect(amp.gain);
+
+    // Yumuşak giriş-çıkış zarfı + boğuk ton
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.linearRampToValueAtTime(0.16, t0 + 0.09);
+    env.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 320;
+
+    carrier.connect(amp).connect(env).connect(filter).connect(out);
+    carrier.start(t0);
+    lfo.start(t0);
+    carrier.stop(t0 + dur);
+    lfo.stop(t0 + dur);
   }
 
   dig() {
@@ -93,6 +125,12 @@ export class Sfx {
 
   rain() {
     this.noise(1200, 700, 0.12);
+  }
+
+  /** Kumaş hışırtısı + mandal kliki (çamaşır asma) */
+  cloth() {
+    this.noise(160, 1400, 0.14);
+    this.tone(640, 45, { type: "square", vol: 0.07, delayMs: 140 });
   }
 
   denied() {

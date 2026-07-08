@@ -9,7 +9,7 @@ import {
   MAP_OBJECTS,
 } from "../data/mapLayout";
 import { PlantSystem, type Plot, type InteractResult } from "../systems/PlantSystem";
-import { SaveSystem } from "../systems/SaveSystem";
+import { SaveSystem, type LaundryState } from "../systems/SaveSystem";
 import { Sfx } from "../systems/Sfx";
 import { Music } from "../systems/Music";
 import { audioEngine } from "../systems/AudioEngine";
@@ -17,6 +17,8 @@ import { audioEngine } from "../systems/AudioEngine";
 const PLAYER_SPEED = 80;
 const CAT_NAME = "Spicey";
 const BENCH_TILE = { tx: 8, ty: 6 }; // terasta, gazebonun yanı
+const LAUNDRY_DRY_MS = 3 * 60_000; // kuruma süresi
+const LAUNDRY_BASKET_MS = 5 * 60_000; // yeni sepetin gelme aralığı
 
 /** Rebecca'nın boş boş gezerken söyledikleri — İngilizce + arada B2 Türkçe karışık */
 const IDLE_LINES = [
@@ -94,6 +96,18 @@ const LINES = {
     "No papers left... Kağıt bitti. Kulübede vardır belki?",
     "Hmm, out of papers. Späti'ye gitmek lazım ama... önce kulübeye bakayım.",
   ],
+  laundryDrying: (min: number) => [
+    `Still drying... ${min} dk daha lazım.`,
+    `Not dry yet. Sabır — ${min} minutes.`,
+  ],
+  laundryNone: () => [
+    "No laundry right now. Çamaşır yok şimdilik.",
+    "Basket's empty. Sepet boş, keyfe bak.",
+  ],
+  laundryRain: () => [
+    "The laundry! Çamaşırlar ıslandı yine... of Berlin.",
+    "Nooo, the rain got the laundry! Baştan kuruyacak.",
+  ],
   buyPaper: () => [
     "Found papers in the shed! Kulübede kağıt varmış. -3c",
     "There we go, papers! Şanslıyım bugün. -3c",
@@ -114,6 +128,9 @@ export class GardenScene extends Phaser.Scene {
   private pendingBench = false;
   private pendingShed = false;
   private shed: Phaser.GameObjects.Image | null = null;
+  private pendingDryer = false;
+  private dryerObj: Phaser.GameObjects.Image | null = null;
+  private laundry: LaundryState = { basket: 5, hung: 0, hungAt: 0, nextBasketAt: 0 };
   private catTimer = 0;
   private catAsleep = false;
   private catZzz: Phaser.Time.TimerEvent | null = null;
@@ -145,6 +162,7 @@ export class GardenScene extends Phaser.Scene {
     this.registry.set("papers", save?.papers ?? 3);
     this.registry.set("chilling", false);
     this.registry.set("rolling", false);
+    if (save?.laundry) this.laundry = save.laundry;
     this.registry.set("raining", false);
     this.nextRainAt = Date.now() + Phaser.Math.Between(120_000, 300_000);
     this.mischiefTimer = Phaser.Math.Between(60_000, 120_000);
@@ -202,6 +220,74 @@ export class GardenScene extends Phaser.Scene {
         img.setInteractive({ useHandCursor: true });
         img.on("pointerdown", () => this.buyPaperFromShed(img));
       }
+      // Kurutma şemsiyesi: çamaşır asma/toplama sahnesi
+      if (obj.texture === "dryer") {
+        this.dryerObj = img;
+        img.setInteractive({ useHandCursor: true });
+        img.on("pointerdown", () => this.tryOpenLaundry());
+      }
+    }
+  }
+
+  /** Kurutucuya dokun: uzaksa yürü, yakınsa çamaşır sahnesini aç. */
+  private tryOpenLaundry() {
+    if (this.registry.get("rolling") || !this.dryerObj) return;
+    const front = new Phaser.Math.Vector2(
+      this.dryerObj.x + this.dryerObj.displayWidth / 2,
+      this.dryerObj.y + this.dryerObj.displayHeight + 6
+    );
+    if (!this.playerNear(front, 34)) {
+      this.pendingPlot = null;
+      this.pendingBench = false;
+      this.pendingShed = false;
+      this.pendingDryer = true;
+      this.moveTarget = front;
+      this.physics.moveTo(this.player, front.x, front.y, PLAYER_SPEED);
+      return;
+    }
+    this.openLaundry();
+  }
+
+  private openLaundry() {
+    const L = this.laundry;
+    const now = Date.now();
+    // Kayıt yağmur sırasında alındıysa hungAt gelecekte kalmış olabilir — düzelt
+    if (!this.raining && L.hungAt > now) L.hungAt = now;
+    if (this.raining && L.hung > 0) {
+      this.showBubble(Phaser.Math.RND.pick(LINES.laundryRain()));
+      this.resetIdleTimer();
+      return;
+    }
+    const launch = (mode: "hang" | "collect") => {
+      this.scene.launch("Laundry", {
+        mode,
+        laundry: L,
+        onClose: () => {
+          // Hepsi toplandıysa yeni sepet için sayaç başlat
+          if (L.hung === 0 && L.basket === 0) {
+            L.nextBasketAt = Date.now() + LAUNDRY_BASKET_MS;
+          }
+          this.saveNow();
+        },
+      });
+    };
+
+    if (L.hung > 0) {
+      if (now - L.hungAt >= LAUNDRY_DRY_MS) {
+        launch("collect");
+      } else {
+        const min = Math.max(1, Math.ceil((LAUNDRY_DRY_MS - (now - L.hungAt)) / 60_000));
+        this.showBubble(Phaser.Math.RND.pick(LINES.laundryDrying(min)));
+        this.resetIdleTimer();
+      }
+      return;
+    }
+    if (L.basket <= 0 && now >= L.nextBasketAt) L.basket = 5; // yeni sepet geldi
+    if (L.basket > 0) {
+      launch("hang");
+    } else {
+      this.showBubble(Phaser.Math.RND.pick(LINES.laundryNone()));
+      this.resetIdleTimer();
     }
   }
 
@@ -341,6 +427,7 @@ export class GardenScene extends Phaser.Scene {
       coins: (this.registry.get("coins") as number) ?? 0,
       seedIndex: (this.registry.get("seedIndex") as number) ?? 0,
       papers: (this.registry.get("papers") as number) ?? 0,
+      laundry: this.laundry,
       crops: this.plants.serialize(),
       savedAt: Date.now(),
     });
@@ -591,14 +678,28 @@ export class GardenScene extends Phaser.Scene {
     this.rainEndsAt = Date.now() + Phaser.Math.Between(35_000, 70_000);
     this.rainWaterTimer = 0;
     this.sfx.rain();
-    this.showBubble(Phaser.Math.RND.pick(LINES.rainStart()));
+    // Asılı çamaşır varsa yeniden ıslanır — kuruma baştan başlar
+    if (this.laundry.hung > 0) {
+      this.laundry.hungAt = Date.now() + 999_999_999; // yağmur bitene dek kurumaz
+      this.showBubble(Phaser.Math.RND.pick(LINES.laundryRain()));
+    } else {
+      this.showBubble(Phaser.Math.RND.pick(LINES.rainStart()));
+    }
     this.resetIdleTimer();
+  }
+
+  private stopRainLaundry() {
+    // Yağmur bitti: ıslak çamaşırların kuruması şimdi başlasın
+    if (this.laundry.hung > 0 && this.laundry.hungAt > Date.now()) {
+      this.laundry.hungAt = Date.now();
+    }
   }
 
   private stopRain() {
     this.raining = false;
     this.registry.set("raining", false);
     this.nextRainAt = Date.now() + Phaser.Math.Between(180_000, 420_000);
+    this.stopRainLaundry();
   }
 
   // ---------- kedi yaramazlığı / hediyesi ----------
@@ -714,6 +815,9 @@ export class GardenScene extends Phaser.Scene {
       } else if (this.pendingShed) {
         this.pendingShed = false;
         if (this.shed) this.buyPaperFromShed(this.shed);
+      } else if (this.pendingDryer) {
+        this.pendingDryer = false;
+        this.openLaundry();
       }
     }
   }

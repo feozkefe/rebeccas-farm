@@ -45,6 +45,7 @@ export class RollScene extends Phaser.Scene {
     this.sprinkles = 0;
     this.rollProgress = 0;
     this.swipeStartY = null;
+    this.closing = false;
   }
 
   create() {
@@ -269,7 +270,11 @@ export class RollScene extends Phaser.Scene {
     this.time.delayedCall(1600, () => this.close(true));
   }
 
+  private closing = false;
+
   private close(success: boolean) {
+    if (this.closing || !this.cameras?.main) return;
+    this.closing = true;
     this.cameras.main.fadeOut(250, 0, 0, 0);
     this.time.delayedCall(260, () => {
       this.registry.set("rolling", false);

@@ -13,11 +13,23 @@ export interface CropSave {
   wateredAt: number; // epoch ms
 }
 
+export interface LaundryState {
+  /** sepette bekleyen ıslak çamaşır */
+  basket: number;
+  /** ipte asılı çamaşır */
+  hung: number;
+  /** son asma zamanı (epoch ms) — kuruma bundan itibaren sayılır */
+  hungAt: number;
+  /** yeni sepetin geleceği zaman (epoch ms) */
+  nextBasketAt: number;
+}
+
 export interface SaveData {
   coins: number;
   seedIndex: number;
   /** sarma kağıdı sayısı (eski kayıtlarda olmayabilir) */
   papers?: number;
+  laundry?: LaundryState;
   crops: CropSave[];
   savedAt: number;
 }

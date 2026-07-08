@@ -83,7 +83,13 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
       + HUD'da 🔊/🔇 düğmesi. Ses ilk dokunuşta açılır (tarayıcı kuralı).
 - [x] Ekrana duyarlı zoom: kısa kenarda ~20 tile (telefon 1.5x, masaüstü 3x)
 - ~~TV Kulesi silueti~~ — eklendi, kullanıcı istemedi, kaldırıldı (4 Tem)
-- [ ] Dekorasyon dükkanı (saksı, cüce, fener)
+- [x] Çamaşır rutini: kurutma şemsiyesine dokun → ayrı sahne (gökyüzü,
+      güneş, bulutlar) → sepetten 5 çamaşırı iplere as (rüzgârda sallanır)
+      → 3 dk'da kurur (yağmur yağarsa ıslanır, baştan!) → topla +3c/parça
+      → 5 dk sonra yeni sepet. Durum kayıtlı, offline kuruma çalışır.
+- [x] Kedi mırlaması yumuşatıldı (LFO'lu tatlı "prrr", 7 Tem)
+- [ ] Dekorasyon dükkanı (saksı, cüce, fener) — Berlin Flohmarkt teması
+- [ ] Späti sahnesi (bahçe kapısından sokağa → kağıt/tütün/mama alışverişi)
 - [ ] Anı koleksiyonu: hedeflere ulaşınca açılan ortak fotoğraflar/notlar
       (kullanıcıdan fotoğraf bekleniyor)
 
