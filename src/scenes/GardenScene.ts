@@ -100,9 +100,13 @@ const LINES = {
     `Still drying... ${min} dk daha lazım.`,
     `Not dry yet. Sabır — ${min} minutes.`,
   ],
-  laundryNone: () => [
-    "No laundry right now. Çamaşır yok şimdilik.",
-    "Basket's empty. Sepet boş, keyfe bak.",
+  laundryNone: (min: number) => [
+    `Basket's empty. Yeni çamaşır ~${min} dk'ya gelir.`,
+    `No laundry right now — new basket in ~${min} min. Keyfe bak.`,
+  ],
+  laundryReady: () => [
+    "Laundry day! Çamaşır günü 🧺",
+    "Fresh basket is here! Yeni sepet geldi.",
   ],
   laundryRain: () => [
     "The laundry! Çamaşırlar ıslandı yine... of Berlin.",
@@ -130,6 +134,7 @@ export class GardenScene extends Phaser.Scene {
   private shed: Phaser.GameObjects.Image | null = null;
   private pendingDryer = false;
   private dryerObj: Phaser.GameObjects.Image | null = null;
+  private basketIcon: Phaser.GameObjects.Image | null = null;
   private laundry: LaundryState = { basket: 5, hung: 0, hungAt: 0, nextBasketAt: 0 };
   private catTimer = 0;
   private catAsleep = false;
@@ -225,6 +230,19 @@ export class GardenScene extends Phaser.Scene {
         this.dryerObj = img;
         img.setInteractive({ useHandCursor: true });
         img.on("pointerdown", () => this.tryOpenLaundry());
+        // "Çamaşır hazır" göstergesi: dibinde bekleyen sepet
+        this.basketIcon = this.add
+          .image(img.x + img.displayWidth - 6, img.y + img.displayHeight - 4, "basketIcon")
+          .setDepth(img.y + img.displayHeight + 1)
+          .setVisible(false);
+        this.tweens.add({
+          targets: this.basketIcon,
+          y: this.basketIcon.y - 2,
+          duration: 800,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.inOut",
+        });
       }
     }
   }
@@ -246,6 +264,23 @@ export class GardenScene extends Phaser.Scene {
       return;
     }
     this.openLaundry();
+  }
+
+  /** Süresi dolunca yeni sepet gelir (bildirimli); gösterge görünürlüğü. */
+  private updateLaundryBasket() {
+    const L = this.laundry;
+    if (
+      L.basket <= 0 &&
+      L.hung <= 0 &&
+      L.nextBasketAt > 0 &&
+      Date.now() >= L.nextBasketAt
+    ) {
+      L.basket = 5;
+      this.showBubble(Phaser.Math.RND.pick(LINES.laundryReady()));
+      this.resetIdleTimer();
+      this.saveNow();
+    }
+    this.basketIcon?.setVisible(L.basket > 0);
   }
 
   private openLaundry() {
@@ -286,7 +321,8 @@ export class GardenScene extends Phaser.Scene {
     if (L.basket > 0) {
       launch("hang");
     } else {
-      this.showBubble(Phaser.Math.RND.pick(LINES.laundryNone()));
+      const min = Math.max(1, Math.ceil((L.nextBasketAt - now) / 60_000));
+      this.showBubble(Phaser.Math.RND.pick(LINES.laundryNone(min)));
       this.resetIdleTimer();
     }
   }
@@ -621,6 +657,7 @@ export class GardenScene extends Phaser.Scene {
     this.updateIdleChatter(delta);
     this.updateChillNotes(delta);
     this.updateRain();
+    this.updateLaundryBasket();
     // Banktan kalkınca (uzaklaşınca) chill biter
     if (this.isChilling() && !this.playerNear(this.benchSeat(), 14)) {
       this.endChill();
