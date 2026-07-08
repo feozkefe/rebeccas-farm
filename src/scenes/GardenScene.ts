@@ -13,7 +13,6 @@ import { SaveSystem } from "../systems/SaveSystem";
 import { Sfx } from "../systems/Sfx";
 import { Music } from "../systems/Music";
 import { audioEngine } from "../systems/AudioEngine";
-import { UIScene } from "../ui/HUD";
 
 const PLAYER_SPEED = 80;
 const CAT_NAME = "Spicey";
@@ -91,6 +90,14 @@ const LINES = {
     `A present from ${CAT_NAME}! ...is that a leaf? Neyse, sağol kedicik. +5c`,
     `${CAT_NAME}, canım benim! What did you bring? +5c`,
   ],
+  noPapers: () => [
+    "No papers left... Kağıt bitti. Kulübede vardır belki?",
+    "Hmm, out of papers. Späti'ye gitmek lazım ama... önce kulübeye bakayım.",
+  ],
+  buyPaper: () => [
+    "Found papers in the shed! Kulübede kağıt varmış. -3c",
+    "There we go, papers! Şanslıyım bugün. -3c",
+  ],
 };
 
 /**
@@ -105,6 +112,8 @@ export class GardenScene extends Phaser.Scene {
   private moveTarget: Phaser.Math.Vector2 | null = null;
   private pendingPlot: Plot | null = null;
   private pendingBench = false;
+  private pendingShed = false;
+  private shed: Phaser.GameObjects.Image | null = null;
   private catTimer = 0;
   private catAsleep = false;
   private catZzz: Phaser.Time.TimerEvent | null = null;
@@ -133,7 +142,9 @@ export class GardenScene extends Phaser.Scene {
     const save = SaveSystem.load();
     this.registry.set("coins", save?.coins ?? 20);
     this.registry.set("seedIndex", save?.seedIndex ?? 0);
+    this.registry.set("papers", save?.papers ?? 3);
     this.registry.set("chilling", false);
+    this.registry.set("rolling", false);
     this.registry.set("raining", false);
     this.nextRainAt = Date.now() + Phaser.Math.Between(120_000, 300_000);
     this.mischiefTimer = Phaser.Math.Between(60_000, 120_000);
@@ -185,7 +196,42 @@ export class GardenScene extends Phaser.Scene {
         .image(obj.tx * TILE, obj.ty * TILE, obj.texture)
         .setOrigin(obj.originX ?? 0, obj.originY ?? 0);
       img.setDepth(img.y + img.displayHeight);
+      // Kulübe: dokununca kağıt satın al (ileride gerçek Späti sahnesi olacak)
+      if (obj.texture === "shed") {
+        this.shed = img;
+        img.setInteractive({ useHandCursor: true });
+        img.on("pointerdown", () => this.buyPaperFromShed(img));
+      }
     }
+  }
+
+  /** Kulübeden sarma kağıdı: 3c. Uzaksa önce oraya yürür. */
+  private buyPaperFromShed(shed: Phaser.GameObjects.Image) {
+    if (this.registry.get("rolling")) return;
+    const front = new Phaser.Math.Vector2(
+      shed.x + shed.displayWidth / 2,
+      shed.y + shed.displayHeight + 6
+    );
+    if (!this.playerNear(front, 30)) {
+      this.pendingPlot = null;
+      this.pendingBench = false;
+      this.pendingShed = true;
+      this.moveTarget = front;
+      this.physics.moveTo(this.player, front.x, front.y, PLAYER_SPEED);
+      return;
+    }
+    const coins = (this.registry.get("coins") as number) ?? 0;
+    if (coins < 3) {
+      this.sfx.denied();
+      this.showBubble(Phaser.Math.RND.pick(LINES.noCoins()));
+      return;
+    }
+    this.registry.set("coins", coins - 3);
+    this.registry.set("papers", ((this.registry.get("papers") as number) ?? 0) + 1);
+    this.sfx.coin();
+    this.showBubble(Phaser.Math.RND.pick(LINES.buyPaper()));
+    this.saveNow();
+    this.resetIdleTimer();
   }
 
   private createBench() {
@@ -294,6 +340,7 @@ export class GardenScene extends Phaser.Scene {
     SaveSystem.save({
       coins: (this.registry.get("coins") as number) ?? 0,
       seedIndex: (this.registry.get("seedIndex") as number) ?? 0,
+      papers: (this.registry.get("papers") as number) ?? 0,
       crops: this.plants.serialize(),
       savedAt: Date.now(),
     });
@@ -359,17 +406,31 @@ export class GardenScene extends Phaser.Scene {
     }
   }
 
-  /** Banka otur → sarma mini oyunu; başarıyla sarınca chill başlar. */
+  /** Banka otur → oyuncu gözünden sarma sahnesi; sarınca chill başlar. */
   private beginRolling() {
     if (this.isChilling() || this.registry.get("rolling")) return;
+    const papers = (this.registry.get("papers") as number) ?? 0;
+    if (papers <= 0) {
+      this.showBubble(Phaser.Math.RND.pick(LINES.noPapers()));
+      this.resetIdleTimer();
+      return;
+    }
     const seat = this.benchSeat();
     this.player.setPosition(seat.x, seat.y - 6); // banka otur
     this.player.setVelocity(0);
     this.moveTarget = null;
     this.showBubble(Phaser.Math.RND.pick(LINES.chillStart()));
     this.resetIdleTimer();
-    const ui = this.scene.get("UI") as UIScene;
-    ui.startRollGame(() => this.startChill());
+    this.scene.launch("Roll", {
+      onDone: () => {
+        this.registry.set(
+          "papers",
+          Math.max(0, ((this.registry.get("papers") as number) ?? 1) - 1)
+        );
+        this.startChill();
+        this.saveNow();
+      },
+    });
   }
 
   /** Joint sarıldı → duman → chill mode (oturduğu sürece büyüme 2x) */
@@ -650,6 +711,9 @@ export class GardenScene extends Phaser.Scene {
       } else if (this.pendingBench) {
         this.pendingBench = false;
         this.beginRolling();
+      } else if (this.pendingShed) {
+        this.pendingShed = false;
+        if (this.shed) this.buyPaperFromShed(this.shed);
       }
     }
   }

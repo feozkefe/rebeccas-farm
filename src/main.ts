@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { BootScene } from "./scenes/BootScene";
 import { GardenScene } from "./scenes/GardenScene";
+import { RollScene } from "./scenes/RollScene";
 import { UIScene } from "./ui/HUD";
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -16,7 +17,7 @@ const config: Phaser.Types.Core.GameConfig = {
     default: "arcade",
     arcade: { debug: false },
   },
-  scene: [BootScene, GardenScene, UIScene],
+  scene: [BootScene, GardenScene, RollScene, UIScene],
 };
 
 const game = new Phaser.Game(config);

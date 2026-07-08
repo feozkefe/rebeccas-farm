@@ -16,6 +16,8 @@ export interface CropSave {
 export interface SaveData {
   coins: number;
   seedIndex: number;
+  /** sarma kağıdı sayısı (eski kayıtlarda olmayabilir) */
+  papers?: number;
   crops: CropSave[];
   savedAt: number;
 }
