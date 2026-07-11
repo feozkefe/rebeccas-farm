@@ -117,9 +117,11 @@ export class UIScene extends Phaser.Scene {
     const coins = (this.registry.get("coins") as number) ?? 0;
     const idx = (this.registry.get("seedIndex") as number) ?? 0;
     const papers = (this.registry.get("papers") as number) ?? 0;
+    const tobacco = (this.registry.get("tobacco") as number) ?? 0;
+    const weed = (this.registry.get("weed") as number) ?? 0;
     const seed = PLANTS[idx % PLANTS.length];
     this.coinText.setText(`🪙 ${coins}`);
-    this.paperText.setText(`📄 ${papers}`);
+    this.paperText.setText(`📄${papers} 🚬${tobacco} 🌿${weed}`);
     this.seedText.setText(
       `${seed.emoji} ${seed.name} — ${seed.seedPrice}c  ▸`
     );

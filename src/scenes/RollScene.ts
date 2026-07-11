@@ -5,15 +5,17 @@ import { Sfx } from "../systems/Sfx";
  * Oyuncu gözünden sarma sahnesi — sakin, aceleye gerek yok, kaybetmek yok.
  * Ahşap masa + tepsi; adımlar:
  *   0) kağıda dokun → tepsiye serilir
- *   1) keseye dokun (3 tutam) → yeşiller kağıda dökülür
- *   2) yukarı kaydır (3 kez) → kağıt kıvrılarak sarılır
- *   3) dokun → yapıştır, Perfect! → chill başlar
- * ✕ ile her an vazgeçilebilir (kağıt harcanmaz).
+ *   1) tütün kesesine dokun (2 tutam) → kahverengi kıymıklar
+ *   2) yeşillik kesesine dokun (2 tutam) → yeşiller üstüne
+ *   3) yukarı kaydır (3 kez) → kağıt kıvrılarak sarılır
+ *   4) dokun → yapıştır, Perfect! → chill başlar
+ * ✕ ile her an vazgeçilebilir (malzeme harcanmaz — tüketim tamamlanınca).
  */
 
 const STEP_HINTS = [
   "Take a paper... Kağıdı al 📄",
-  "Tap the pouch to sprinkle — keseye dokun 🌿",
+  "Sprinkle the tobacco — tütünü serp 🚬",
+  "Now the good stuff — şimdi yeşillik 🌿",
   "Swipe up to roll — yukarı kaydırarak sar",
   "Tap to seal it — dokun, yapıştır 👅",
 ];
@@ -22,12 +24,14 @@ export class RollScene extends Phaser.Scene {
   private onDone: (() => void) | null = null;
   private sfx = new Sfx();
   private step = 0;
-  private sprinkles = 0;
+  private tobaccoPinches = 0;
+  private weedPinches = 0;
   private rollProgress = 0;
   private hint!: Phaser.GameObjects.Text;
   private paperGfx!: Phaser.GameObjects.Graphics;
   private paper!: Phaser.GameObjects.Container;
-  private pouch!: Phaser.GameObjects.Container;
+  private weedPouch!: Phaser.GameObjects.Container;
+  private tobaccoPouch!: Phaser.GameObjects.Container;
   private swipeStartY: number | null = null;
   // Yerleşim (create'te hesaplanır)
   private cx = 0;
@@ -42,7 +46,8 @@ export class RollScene extends Phaser.Scene {
   init(data: { onDone: () => void }) {
     this.onDone = data.onDone;
     this.step = 0;
-    this.sprinkles = 0;
+    this.tobaccoPinches = 0;
+    this.weedPinches = 0;
     this.rollProgress = 0;
     this.swipeStartY = null;
     this.closing = false;
@@ -58,7 +63,7 @@ export class RollScene extends Phaser.Scene {
     this.paperH = this.paperW * 0.34;
 
     this.drawBackdrop(w, h);
-    this.createPouch();
+    this.createPouches();
     this.createPaper();
     this.createHud(w);
     this.setupSwipe();
@@ -96,32 +101,44 @@ export class RollScene extends Phaser.Scene {
     table.strokeRoundedRect(this.cx - trayW / 2, this.cy - trayH / 2, trayW, trayH, 18);
   }
 
-  /** Ot kesesi — tepsinin solunda, dokununca tutam serper */
-  private createPouch() {
+  /** İki kese — tepsinin solunda üst üste: 🚬 tütün ve 🌿 yeşillik */
+  private createPouches() {
     const px = this.cx - Math.min(this.scale.width * 0.72, 520) / 2 + 60;
-    const py = this.cy + 10;
-    const g = this.add.graphics();
-    g.fillStyle(0x2f5e3f);
-    g.fillRoundedRect(-34, -26, 68, 56, 12); // kese gövdesi
-    g.fillStyle(0x3e7a4e);
-    g.fillRoundedRect(-34, -26, 68, 20, { tl: 12, tr: 12, bl: 0, br: 0 }); // kapak
-    g.fillStyle(0xf2c53d);
-    g.fillCircle(0, -16, 4); // düğme
-    const label = this.add
-      .text(0, 8, "🌿", { fontSize: "22px" })
-      .setOrigin(0.5);
-    this.pouch = this.add.container(px, py, [g, label]);
-    this.pouch.setSize(80, 70).setInteractive({ useHandCursor: true });
-    this.pouch.on("pointerdown", () => this.sprinkle());
-    // Hafif nefes alan sallanma
-    this.tweens.add({
-      targets: this.pouch,
-      angle: 3,
-      duration: 1400,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.inOut",
-    });
+    const make = (
+      py: number,
+      body: number,
+      flap: number,
+      emoji: string,
+      onTap: () => void
+    ) => {
+      const g = this.add.graphics();
+      g.fillStyle(body);
+      g.fillRoundedRect(-34, -26, 68, 56, 12); // kese gövdesi
+      g.fillStyle(flap);
+      g.fillRoundedRect(-34, -26, 68, 20, { tl: 12, tr: 12, bl: 0, br: 0 }); // kapak
+      g.fillStyle(0xf2c53d);
+      g.fillCircle(0, -16, 4); // düğme
+      const label = this.add.text(0, 8, emoji, { fontSize: "22px" }).setOrigin(0.5);
+      const c = this.add.container(px, py, [g, label]);
+      c.setSize(80, 70).setInteractive({ useHandCursor: true });
+      c.on("pointerdown", onTap);
+      // Hafif nefes alan sallanma
+      this.tweens.add({
+        targets: c,
+        angle: 3,
+        duration: Phaser.Math.Between(1200, 1600),
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.inOut",
+      });
+      return c;
+    };
+    this.tobaccoPouch = make(this.cy - 34, 0x6b4a2f, 0x8a6238, "🚬", () =>
+      this.sprinkle("tobacco")
+    );
+    this.weedPouch = make(this.cy + 48, 0x2f5e3f, 0x3e7a4e, "🌿", () =>
+      this.sprinkle("weed")
+    );
   }
 
   /** Kağıt — başta tepsinin sağ üstünde eğik durur */
@@ -136,7 +153,7 @@ export class RollScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     this.paper.on("pointerdown", () => {
       if (this.step === 0) this.placePaper();
-      else if (this.step === 3) this.seal();
+      else if (this.step === 4) this.seal();
     });
     this.redrawPaper();
   }
@@ -181,17 +198,23 @@ export class RollScene extends Phaser.Scene {
     });
   }
 
-  private sprinkle() {
-    if (this.step !== 1) return;
+  /** Keseden kağıda tutam serpme; tütün (adım 1) → yeşillik (adım 2) */
+  private sprinkle(kind: "tobacco" | "weed") {
+    if (kind === "tobacco" && this.step !== 1) return;
+    if (kind === "weed" && this.step !== 2) return;
     this.sfx.plant();
-    // Keseden kağıda düşen yeşil kıymıklar
+    const pouch = kind === "tobacco" ? this.tobaccoPouch : this.weedPouch;
+    const colors =
+      kind === "tobacco"
+        ? [0x8a5a3b, 0x6b4a2f, 0x9a7448]
+        : [0x5ec850, 0x3e8e3e, 0x7ec850];
     for (let i = 0; i < 7; i++) {
       const bit = this.add.rectangle(
-        this.pouch.x + Phaser.Math.Between(-8, 8),
-        this.pouch.y - 20,
+        pouch.x + Phaser.Math.Between(-8, 8),
+        pouch.y - 20,
         4,
         4,
-        Phaser.Math.RND.pick([0x5ec850, 0x3e8e3e, 0x7ec850])
+        Phaser.Math.RND.pick(colors)
       );
       this.tweens.add({
         targets: bit,
@@ -203,20 +226,28 @@ export class RollScene extends Phaser.Scene {
         onComplete: () => bit.destroy(),
       });
     }
-    this.sprinkles = Math.min(this.sprinkles + 1, 3);
-    this.time.delayedCall(500, () => this.redrawPaper());
-    if (this.sprinkles >= 3) {
-      this.step = 2;
-      this.time.delayedCall(700, () => this.setHint(2));
+    if (kind === "tobacco") {
+      this.tobaccoPinches = Math.min(this.tobaccoPinches + 1, 2);
+      if (this.tobaccoPinches >= 2) {
+        this.step = 2;
+        this.time.delayedCall(700, () => this.setHint(2));
+      }
+    } else {
+      this.weedPinches = Math.min(this.weedPinches + 1, 2);
+      if (this.weedPinches >= 2) {
+        this.step = 3;
+        this.time.delayedCall(700, () => this.setHint(3));
+      }
     }
+    this.time.delayedCall(500, () => this.redrawPaper());
   }
 
   private setupSwipe() {
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
-      if (this.step === 2) this.swipeStartY = p.y;
+      if (this.step === 3) this.swipeStartY = p.y;
     });
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => {
-      if (this.step !== 2 || this.swipeStartY === null) return;
+      if (this.step !== 3 || this.swipeStartY === null) return;
       const dy = this.swipeStartY - p.y;
       this.swipeStartY = null;
       if (dy > 30) {
@@ -224,15 +255,15 @@ export class RollScene extends Phaser.Scene {
         this.sfx.water(); // yumuşak sürtünme sesi
         this.redrawPaper();
         if (this.rollProgress >= 3) {
-          this.step = 3;
-          this.setHint(3);
+          this.step = 4;
+          this.setHint(4);
         }
       }
     });
   }
 
   private seal() {
-    this.step = 4;
+    this.step = 5;
     this.sfx.harvest();
     this.hint.setText("Perfect! 🌿✨");
     const spark = this.add
@@ -305,12 +336,20 @@ export class RollScene extends Phaser.Scene {
       g.fillRoundedRect(-W / 2, -H / 2, W, H, 8);
       g.lineStyle(2, 0xe0dcc8);
       g.lineBetween(-W / 2 + 8, 0, W / 2 - 8, 0); // kırışık çizgisi
-      if (this.sprinkles > 0) {
-        const heapW = W * (0.25 + this.sprinkles * 0.15);
+      // Önce tütün yatağı (kahverengi), üstüne yeşillik
+      if (this.tobaccoPinches > 0) {
+        const heapW = W * (0.2 + this.tobaccoPinches * 0.15);
+        g.fillStyle(0x6b4a2f);
+        g.fillEllipse(0, 3, heapW, H * 0.38);
+        g.fillStyle(0x8a5a3b);
+        g.fillEllipse(heapW * 0.1, 1, heapW * 0.6, H * 0.24);
+      }
+      if (this.weedPinches > 0) {
+        const heapW = W * (0.18 + this.weedPinches * 0.14);
         g.fillStyle(0x3e8e3e);
-        g.fillEllipse(0, 2, heapW, H * 0.42);
+        g.fillEllipse(0, -1, heapW, H * 0.3);
         g.fillStyle(0x5ec850);
-        g.fillEllipse(-heapW * 0.15, -2, heapW * 0.6, H * 0.28);
+        g.fillEllipse(-heapW * 0.15, -4, heapW * 0.6, H * 0.2);
       }
       return;
     }

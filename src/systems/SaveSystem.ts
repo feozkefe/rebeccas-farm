@@ -27,8 +27,10 @@ export interface LaundryState {
 export interface SaveData {
   coins: number;
   seedIndex: number;
-  /** sarma kağıdı sayısı (eski kayıtlarda olmayabilir) */
+  /** sarma malzemeleri (eski kayıtlarda olmayabilir) */
   papers?: number;
+  tobacco?: number;
+  weed?: number;
   laundry?: LaundryState;
   crops: CropSave[];
   savedAt: number;

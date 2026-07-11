@@ -66,8 +66,14 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
       kaydırarak sar → yapıştır; acele yok, kaybetme yok) → chill mode
       (mor dreamy filtre, notalar, reverb'lü yavaş müzik, büyüme 2x)
       — timing-bar versiyonu beğenilmedi, kaldırıldı (7 Tem)
-- [x] Kağıt ekonomisi: her sarış 1 kağıt 📄 (3 ile başlar, HUD'da sayaç);
-      bitince kulübeden 3c'ye alınır — ileride gerçek **Späti** sahnesi olacak
+- [x] Malzeme ekonomisi: her sarış **1 kağıt 📄 + 1 tütün 🚬 + 1 yeşillik 🌿**
+      harcar (3'er ile başlar, HUD'da sayaç); biten **Späti'den** alınır
+- [x] **Späti sahnesi** (8 Tem): bahçe kapısına ("140") dokun → Rebecca kapıya
+      yürür → köşedeki Späti: neon tabela, renkli şişeli buzdolabı, tezgahta
+      uyuyan Späti kedisi (sevilebilir), raflarda 3 ürün: kağıt 3c / tütün 5c /
+      yeşillik 10c. Kulübeden alışveriş kaldırıldı.
+- [x] Sarma sahnesine tütün adımı eklendi: kağıt → tütün serp (2 tutam,
+      kahverengi) → yeşillik serp (2 tutam) → sar → yapıştır
 - [x] Save/load (localStorage, 5 sn'de bir otomatik) + kapalıyken büyüme
 - [x] PWA: manifest, domates ikonu (192/512), service worker (offline)
 - [ ] Doğum günü sahnesi: ilk açılışta kutlama + kişisel mesaj (EN SON — mesaj bekleniyor)

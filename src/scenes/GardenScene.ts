@@ -92,9 +92,13 @@ const LINES = {
     `A present from ${CAT_NAME}! ...is that a leaf? Neyse, sağol kedicik. +5c`,
     `${CAT_NAME}, canım benim! What did you bring? +5c`,
   ],
-  noPapers: () => [
-    "No papers left... Kağıt bitti. Kulübede vardır belki?",
-    "Hmm, out of papers. Späti'ye gitmek lazım ama... önce kulübeye bakayım.",
+  noSupplies: (missing: string) => [
+    `Out of ${missing}... Bitti. Späti'ye gitmem lazım — kapıdan çık.`,
+    `Hmm, no ${missing} left. Kapıya dokun, Späti hemen köşede.`,
+  ],
+  spatiTrip: () => [
+    "Off to the Späti! Hemen dönerim.",
+    "Quick Späti run... Bir şey ister misin? Şaka, yalnız gidiyorum.",
   ],
   laundryDrying: (min: number) => [
     `Still drying... ${min} dk daha lazım.`,
@@ -112,10 +116,6 @@ const LINES = {
     "The laundry! Çamaşırlar ıslandı yine... of Berlin.",
     "Nooo, the rain got the laundry! Baştan kuruyacak.",
   ],
-  buyPaper: () => [
-    "Found papers in the shed! Kulübede kağıt varmış. -3c",
-    "There we go, papers! Şanslıyım bugün. -3c",
-  ],
 };
 
 /**
@@ -130,8 +130,8 @@ export class GardenScene extends Phaser.Scene {
   private moveTarget: Phaser.Math.Vector2 | null = null;
   private pendingPlot: Plot | null = null;
   private pendingBench = false;
-  private pendingShed = false;
-  private shed: Phaser.GameObjects.Image | null = null;
+  private pendingGate = false;
+  private gateObj: Phaser.GameObjects.Image | null = null;
   private pendingDryer = false;
   private dryerObj: Phaser.GameObjects.Image | null = null;
   private basketIcon: Phaser.GameObjects.Image | null = null;
@@ -165,6 +165,8 @@ export class GardenScene extends Phaser.Scene {
     this.registry.set("coins", save?.coins ?? 20);
     this.registry.set("seedIndex", save?.seedIndex ?? 0);
     this.registry.set("papers", save?.papers ?? 3);
+    this.registry.set("tobacco", save?.tobacco ?? 3);
+    this.registry.set("weed", save?.weed ?? 3);
     this.registry.set("chilling", false);
     this.registry.set("rolling", false);
     if (save?.laundry) this.laundry = save.laundry;
@@ -219,11 +221,11 @@ export class GardenScene extends Phaser.Scene {
         .image(obj.tx * TILE, obj.ty * TILE, obj.texture)
         .setOrigin(obj.originX ?? 0, obj.originY ?? 0);
       img.setDepth(img.y + img.displayHeight);
-      // Kulübe: dokununca kağıt satın al (ileride gerçek Späti sahnesi olacak)
-      if (obj.texture === "shed") {
-        this.shed = img;
+      // Bahçe kapısı: dokununca Späti'ye gidilir (sokak hemen köşede)
+      if (obj.texture === "gate") {
+        this.gateObj = img;
         img.setInteractive({ useHandCursor: true });
-        img.on("pointerdown", () => this.buyPaperFromShed(img));
+        img.on("pointerdown", () => this.tryGoSpati());
       }
       // Kurutma şemsiyesi: çamaşır asma/toplama sahnesi
       if (obj.texture === "dryer") {
@@ -257,7 +259,7 @@ export class GardenScene extends Phaser.Scene {
     if (!this.playerNear(front, 34)) {
       this.pendingPlot = null;
       this.pendingBench = false;
-      this.pendingShed = false;
+      this.pendingGate = false;
       this.pendingDryer = true;
       this.moveTarget = front;
       this.physics.moveTo(this.player, front.x, front.y, PLAYER_SPEED);
@@ -327,33 +329,23 @@ export class GardenScene extends Phaser.Scene {
     }
   }
 
-  /** Kulübeden sarma kağıdı: 3c. Uzaksa önce oraya yürür. */
-  private buyPaperFromShed(shed: Phaser.GameObjects.Image) {
-    if (this.registry.get("rolling")) return;
+  /** Kapıya dokun: uzaksa yürü, yakınsa Späti sahnesine geç. */
+  private tryGoSpati() {
+    if (this.registry.get("rolling") || !this.gateObj) return;
     const front = new Phaser.Math.Vector2(
-      shed.x + shed.displayWidth / 2,
-      shed.y + shed.displayHeight + 6
+      this.gateObj.x + this.gateObj.displayWidth / 2,
+      this.gateObj.y - 6
     );
     if (!this.playerNear(front, 30)) {
       this.pendingPlot = null;
       this.pendingBench = false;
-      this.pendingShed = true;
+      this.pendingGate = true;
       this.moveTarget = front;
       this.physics.moveTo(this.player, front.x, front.y, PLAYER_SPEED);
       return;
     }
-    const coins = (this.registry.get("coins") as number) ?? 0;
-    if (coins < 3) {
-      this.sfx.denied();
-      this.showBubble(Phaser.Math.RND.pick(LINES.noCoins()));
-      return;
-    }
-    this.registry.set("coins", coins - 3);
-    this.registry.set("papers", ((this.registry.get("papers") as number) ?? 0) + 1);
-    this.sfx.coin();
-    this.showBubble(Phaser.Math.RND.pick(LINES.buyPaper()));
-    this.saveNow();
-    this.resetIdleTimer();
+    this.showBubble(Phaser.Math.RND.pick(LINES.spatiTrip()));
+    this.scene.launch("Spati", { onClose: () => this.saveNow() });
   }
 
   private createBench() {
@@ -463,6 +455,8 @@ export class GardenScene extends Phaser.Scene {
       coins: (this.registry.get("coins") as number) ?? 0,
       seedIndex: (this.registry.get("seedIndex") as number) ?? 0,
       papers: (this.registry.get("papers") as number) ?? 0,
+      tobacco: (this.registry.get("tobacco") as number) ?? 0,
+      weed: (this.registry.get("weed") as number) ?? 0,
       laundry: this.laundry,
       crops: this.plants.serialize(),
       savedAt: Date.now(),
@@ -532,9 +526,13 @@ export class GardenScene extends Phaser.Scene {
   /** Banka otur → oyuncu gözünden sarma sahnesi; sarınca chill başlar. */
   private beginRolling() {
     if (this.isChilling() || this.registry.get("rolling")) return;
-    const papers = (this.registry.get("papers") as number) ?? 0;
-    if (papers <= 0) {
-      this.showBubble(Phaser.Math.RND.pick(LINES.noPapers()));
+    // Üç malzeme de lazım: kağıt, tütün, yeşillik — eksikse Späti'ye
+    const missing: string[] = [];
+    if (((this.registry.get("papers") as number) ?? 0) <= 0) missing.push("papers 📄");
+    if (((this.registry.get("tobacco") as number) ?? 0) <= 0) missing.push("tobacco 🚬");
+    if (((this.registry.get("weed") as number) ?? 0) <= 0) missing.push("green 🌿");
+    if (missing.length > 0) {
+      this.showBubble(Phaser.Math.RND.pick(LINES.noSupplies(missing.join(", "))));
       this.resetIdleTimer();
       return;
     }
@@ -546,10 +544,13 @@ export class GardenScene extends Phaser.Scene {
     this.resetIdleTimer();
     this.scene.launch("Roll", {
       onDone: () => {
-        this.registry.set(
-          "papers",
-          Math.max(0, ((this.registry.get("papers") as number) ?? 1) - 1)
-        );
+        // Sarış başına 1 kağıt + 1 tütün + 1 yeşillik
+        for (const key of ["papers", "tobacco", "weed"]) {
+          this.registry.set(
+            key,
+            Math.max(0, ((this.registry.get(key) as number) ?? 1) - 1)
+          );
+        }
         this.startChill();
         this.saveNow();
       },
@@ -849,9 +850,9 @@ export class GardenScene extends Phaser.Scene {
       } else if (this.pendingBench) {
         this.pendingBench = false;
         this.beginRolling();
-      } else if (this.pendingShed) {
-        this.pendingShed = false;
-        if (this.shed) this.buyPaperFromShed(this.shed);
+      } else if (this.pendingGate) {
+        this.pendingGate = false;
+        this.tryGoSpati();
       } else if (this.pendingDryer) {
         this.pendingDryer = false;
         this.openLaundry();
