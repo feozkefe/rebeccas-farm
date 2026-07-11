@@ -315,6 +315,20 @@ export class BootScene extends Phaser.Scene {
     g.strokeRect(1, 5, 16, 8);
     g.generateTexture("basketIcon", 18, 14);
     g.destroy();
+
+    // Boş çamaşır sepeti — asma sonrası kurutucunun dibinde bekler
+    g = this.gfx();
+    g.fillStyle(0x8a683f); // iç boşluk (koyu)
+    g.fillRect(2, 3, 14, 3);
+    g.fillStyle(0x9a7448); // hasır gövde
+    g.fillRect(1, 5, 16, 8);
+    g.lineStyle(1, 0x7d5c38);
+    g.lineBetween(5, 5, 5, 13);
+    g.lineBetween(9, 5, 9, 13);
+    g.lineBetween(13, 5, 13, 13);
+    g.strokeRect(1, 5, 16, 8);
+    g.generateTexture("basketEmptyIcon", 18, 14);
+    g.destroy();
   }
 
   private createCharacterTextures() {

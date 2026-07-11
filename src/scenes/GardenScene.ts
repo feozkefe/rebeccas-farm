@@ -282,7 +282,16 @@ export class GardenScene extends Phaser.Scene {
       this.resetIdleTimer();
       this.saveNow();
     }
-    this.basketIcon?.setVisible(L.basket > 0);
+    // Dolu sepet: ıslak çamaşır bekliyor; boş sepet: asıldı, kurumada
+    if (this.basketIcon) {
+      if (L.basket > 0) {
+        this.basketIcon.setTexture("basketIcon").setVisible(true);
+      } else if (L.hung > 0) {
+        this.basketIcon.setTexture("basketEmptyIcon").setVisible(true);
+      } else {
+        this.basketIcon.setVisible(false);
+      }
+    }
   }
 
   private openLaundry() {
