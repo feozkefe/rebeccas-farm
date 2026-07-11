@@ -237,6 +237,28 @@ export class SpatiScene extends Phaser.Scene {
       .setOrigin(1, 0)
       .setInteractive({ useHandCursor: true });
     close.on("pointerdown", () => this.close());
+
+    // Belirgin çıkış: alt ortada kapı butonu
+    const h = this.scale.height;
+    const exit = this.add
+      .text(w / 2, h - 16, "🚪 Leave — bahçeye dön", {
+        fontFamily: "monospace",
+        fontSize: "15px",
+        color: "#f0e0ff",
+        backgroundColor: "#6a3a8acc",
+        padding: { x: 16, y: 9 },
+      })
+      .setOrigin(0.5, 1)
+      .setInteractive({ useHandCursor: true });
+    exit.on("pointerdown", () => this.close());
+    this.tweens.add({
+      targets: exit,
+      alpha: 0.8,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut",
+    });
   }
 
   // ---------- alışveriş ----------
