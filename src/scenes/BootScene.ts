@@ -329,6 +329,28 @@ export class BootScene extends Phaser.Scene {
     g.strokeRect(1, 5, 16, 8);
     g.generateTexture("basketEmptyIcon", 18, 14);
     g.destroy();
+
+    // Sinek — 6x6 (koyu gövde + açık kanatlar)
+    g = this.gfx();
+    g.fillStyle(0xcfe8f0, 0.9);
+    g.fillRect(0, 1, 2, 2); // sol kanat
+    g.fillRect(4, 1, 2, 2); // sağ kanat
+    g.fillStyle(0x2a2a2a);
+    g.fillRect(2, 2, 2, 3); // gövde
+    g.fillRect(2, 1, 2, 1); // kafa
+    g.generateTexture("fly", 6, 6);
+    g.destroy();
+
+    // Böcek — 8x6 (kahverengi kabuk + koyu kafa)
+    g = this.gfx();
+    g.fillStyle(0x7a4e33);
+    g.fillEllipse(4, 3, 7, 5);
+    g.fillStyle(0x4a3320);
+    g.fillRect(0, 2, 2, 2); // kafa
+    g.lineStyle(1, 0x4a3320);
+    g.lineBetween(4, 0, 4, 6); // kanat çizgisi
+    g.generateTexture("beetle", 8, 6);
+    g.destroy();
   }
 
   private createCharacterTextures() {

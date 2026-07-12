@@ -87,10 +87,16 @@ const LINES = {
     `Hey! ${CAT_NAME}, o yatak senin değil!`,
     `${CAT_NAME}iiii! My poor tomatoes... Of ya.`,
   ],
-  catGift: () => [
-    `${CAT_NAME} brought a gift! Bir hediye mi o? +5c`,
-    `A present from ${CAT_NAME}! ...is that a leaf? Neyse, sağol kedicik. +5c`,
-    `${CAT_NAME}, canım benim! What did you bring? +5c`,
+  catHunt: () => [
+    `Shhh... ${CAT_NAME} saw a bug. Avcı modu: açık.`,
+    `${CAT_NAME} is hunting! Pür dikkat kesildi.`,
+    `Watch out little fly... ${CAT_NAME} geliyor.`,
+  ],
+  catBugThanks: () => [
+    "A fly?! For me? Teşekkürler Spicey... çok naziksin. +1c",
+    "Danke, Spicey! ...ew. But thank you, kedicik. +1c",
+    `Best hunter in Berlin! Aferin ${CAT_NAME}! +1c`,
+    "Ohh bir böcek getirmiş... Thank you? +1c",
   ],
   noSupplies: (missing: string) => [
     `Out of ${missing}... Bitti. Späti'ye gitmem lazım — kapıdan çık.`,
@@ -153,8 +159,13 @@ export class GardenScene extends Phaser.Scene {
   private rainWaterTimer = 0;
   // Kedi yaramazlığı / hediyesi
   private mischiefTimer = 0;
-  private mischiefMode: "dig" | "gift" | null = null;
+  private mischiefMode: "dig" | null = null;
   private mischiefPlot: Plot | null = null;
+  // Böcek avı
+  private bugs: Phaser.Physics.Arcade.Sprite[] = [];
+  private bugSpawnTimer = 15_000;
+  private catHuntTarget: Phaser.Physics.Arcade.Sprite | null = null;
+  private catCarrying = false;
 
   constructor() {
     super("Garden");
@@ -172,7 +183,7 @@ export class GardenScene extends Phaser.Scene {
     if (save?.laundry) this.laundry = save.laundry;
     this.registry.set("raining", false);
     this.nextRainAt = Date.now() + Phaser.Math.Between(120_000, 300_000);
-    this.mischiefTimer = Phaser.Math.Between(60_000, 120_000);
+    this.mischiefTimer = Phaser.Math.Between(180_000, 360_000); // eşeleme nadir
 
     const soilImages = this.createGround();
     this.createObjects();
@@ -664,6 +675,7 @@ export class GardenScene extends Phaser.Scene {
     this.updateWalkAnimation();
     this.updateCat(delta);
     this.updateMischief(delta);
+    this.updateBugs(delta);
     this.updateIdleChatter(delta);
     this.updateChillNotes(delta);
     this.updateRain();
@@ -749,27 +761,28 @@ export class GardenScene extends Phaser.Scene {
     this.stopRainLaundry();
   }
 
-  // ---------- kedi yaramazlığı / hediyesi ----------
+  // ---------- kedi yaramazlığı (nadir eşeleme) ----------
 
   private updateMischief(delta: number) {
-    if (this.catAsleep) return;
+    if (this.catAsleep || this.catHuntTarget || this.catCarrying) return;
 
     // Hedefe yürüme aşaması
     if (this.mischiefMode) {
-      const target =
-        this.mischiefMode === "dig" && this.mischiefPlot
-          ? new Phaser.Math.Vector2(
-              this.mischiefPlot.tx * TILE + TILE / 2,
-              this.mischiefPlot.ty * TILE + TILE / 2
-            )
-          : new Phaser.Math.Vector2(this.player.x, this.player.y);
+      if (!this.mischiefPlot) {
+        this.mischiefMode = null;
+        return;
+      }
+      const target = new Phaser.Math.Vector2(
+        this.mischiefPlot.tx * TILE + TILE / 2,
+        this.mischiefPlot.ty * TILE + TILE / 2
+      );
       const dist = Phaser.Math.Distance.Between(
         this.cat.x,
         this.cat.y,
         target.x,
         target.y
       );
-      if (dist < (this.mischiefMode === "dig" ? 8 : 20)) {
+      if (dist < 8) {
         this.cat.setVelocity(0);
         this.resolveMischief();
       } else {
@@ -781,15 +794,11 @@ export class GardenScene extends Phaser.Scene {
     this.mischiefTimer -= delta;
     if (this.mischiefTimer > 0) return;
 
-    if (Phaser.Math.Between(0, 100) < 35) {
-      this.mischiefMode = "gift";
+    this.mischiefPlot = this.plants.randomWateredPlot();
+    if (this.mischiefPlot) {
+      this.mischiefMode = "dig";
     } else {
-      this.mischiefPlot = this.plants.randomWateredPlot();
-      if (this.mischiefPlot) {
-        this.mischiefMode = "dig";
-      } else {
-        this.mischiefTimer = Phaser.Math.Between(30_000, 60_000);
-      }
+      this.mischiefTimer = Phaser.Math.Between(60_000, 120_000);
     }
   }
 
@@ -817,29 +826,126 @@ export class GardenScene extends Phaser.Scene {
         });
       }
       this.showBubble(Phaser.Math.RND.pick(LINES.catDig()));
-    } else if (this.mischiefMode === "gift") {
-      const coins = (this.registry.get("coins") as number) ?? 0;
-      this.registry.set("coins", coins + 5);
-      this.sfx.gift();
-      const heart = this.add
-        .text(this.cat.x, this.cat.y - 10, "🎁", { fontSize: "8px" })
-        .setOrigin(0.5)
-        .setDepth(10000);
-      this.tweens.add({
-        targets: heart,
-        y: heart.y - 14,
-        alpha: 0,
-        duration: 1200,
-        onComplete: () => heart.destroy(),
-      });
-      this.showBubble(Phaser.Math.RND.pick(LINES.catGift()));
-      this.saveNow();
     }
     this.mischiefMode = null;
     this.mischiefPlot = null;
-    this.mischiefTimer = Phaser.Math.Between(60_000, 150_000);
+    this.mischiefTimer = Phaser.Math.Between(240_000, 420_000); // nadir
     this.catTimer = Phaser.Math.Between(2000, 5000);
     this.resetIdleTimer();
+  }
+
+  // ---------- böcek avı ----------
+
+  /** Arada bir bahçede sinek/böcek belirir (en fazla 2) */
+  private updateBugs(delta: number) {
+    this.bugSpawnTimer -= delta;
+    if (this.bugSpawnTimer <= 0) {
+      if (this.bugs.length < 2) this.spawnBug();
+      this.bugSpawnTimer = Phaser.Math.Between(25_000, 50_000);
+    }
+    const now = Date.now();
+    for (const bug of [...this.bugs]) {
+      if (!bug.active) {
+        this.bugs = this.bugs.filter((b) => b !== bug);
+        continue;
+      }
+      // Kaçamak hareket: kısa süreli rastgele yön değişimleri
+      let moveTimer = (bug.getData("moveTimer") as number) - delta;
+      if (moveTimer <= 0) {
+        const speed = bug.texture.key === "fly" ? 55 : 22;
+        if (Phaser.Math.Between(0, 100) < 25) {
+          bug.setVelocity(0); // ara sıra durur
+        } else {
+          const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+          bug.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+        }
+        moveTimer = Phaser.Math.Between(350, 900);
+      }
+      bug.setData("moveTimer", moveTimer);
+      // Ömrü dolunca uçup gider (av hedefiyse kalır)
+      if (now > (bug.getData("despawnAt") as number) && bug !== this.catHuntTarget) {
+        this.despawnBug(bug);
+      }
+    }
+  }
+
+  private spawnBug() {
+    const kind = Phaser.Math.RND.pick(["fly", "beetle"]);
+    const bug = this.physics.add.sprite(
+      Phaser.Math.Between(4, MAP_W - 4) * TILE,
+      Phaser.Math.Between(12, MAP_H - 4) * TILE,
+      kind
+    );
+    bug.setCollideWorldBounds(true);
+    bug.setDepth(bug.y);
+    bug.setData("moveTimer", 0);
+    bug.setData("despawnAt", Date.now() + Phaser.Math.Between(40_000, 80_000));
+    this.bugs.push(bug);
+  }
+
+  private despawnBug(bug: Phaser.Physics.Arcade.Sprite) {
+    this.bugs = this.bugs.filter((b) => b !== bug);
+    this.tweens.add({
+      targets: bug,
+      alpha: 0,
+      y: bug.y - 8,
+      duration: 400,
+      onComplete: () => bug.destroy(),
+    });
+  }
+
+  /** Yakaladı! Minik yıldız + ağzında oyuncuya taşır */
+  private catchBug(bug: Phaser.Physics.Arcade.Sprite) {
+    this.bugs = this.bugs.filter((b) => b !== bug);
+    bug.destroy();
+    this.catHuntTarget = null;
+    this.catCarrying = true;
+    this.sfx.plant();
+    // Atlayış + yıldız
+    this.tweens.add({
+      targets: this.cat,
+      y: this.cat.y - 6,
+      duration: 120,
+      yoyo: true,
+      ease: "Quad.out",
+    });
+    const star = this.add
+      .text(this.cat.x, this.cat.y - 10, "✦", {
+        fontSize: "10px",
+        color: "#f2c53d",
+      })
+      .setOrigin(0.5)
+      .setDepth(10000);
+    this.tweens.add({
+      targets: star,
+      y: star.y - 12,
+      alpha: 0,
+      duration: 600,
+      onComplete: () => star.destroy(),
+    });
+  }
+
+  /** Avı Rebecca'ya teslim: +1c + teşekkür */
+  private deliverBug() {
+    this.catCarrying = false;
+    const coins = (this.registry.get("coins") as number) ?? 0;
+    this.registry.set("coins", coins + 1);
+    this.sfx.gift();
+    const tag = this.add
+      .text(this.cat.x, this.cat.y - 10, "🪰 +1c", { fontSize: "8px" })
+      .setOrigin(0.5)
+      .setDepth(10000);
+    this.tweens.add({
+      targets: tag,
+      y: tag.y - 14,
+      alpha: 0,
+      duration: 1200,
+      onComplete: () => tag.destroy(),
+    });
+    this.showBubble(Phaser.Math.RND.pick(LINES.catBugThanks()));
+    this.saveNow();
+    this.resetIdleTimer();
+    this.catTimer = Phaser.Math.Between(3000, 6000);
   }
 
   private updatePlayerMovement() {
@@ -880,9 +986,46 @@ export class GardenScene extends Phaser.Scene {
     }
   }
 
-  /** Kedi: dolaş → dinlen → arada kıvrılıp uyu (Zzz) */
+  /** Kedi: dolaş → dinlen → uyu; böcek görürse kovala → yakala → getir */
   private updateCat(delta: number) {
     if (this.mischiefMode) return; // yaramazlık sırasında kontrol updateMischief'te
+
+    // Avı ağzında: Rebecca'ya taşıyor
+    if (this.catCarrying) {
+      const dist = Phaser.Math.Distance.Between(
+        this.cat.x,
+        this.cat.y,
+        this.player.x,
+        this.player.y
+      );
+      if (dist < 20) {
+        this.cat.setVelocity(0);
+        this.deliverBug();
+      } else {
+        this.physics.moveTo(this.cat, this.player.x, this.player.y, 60);
+      }
+      return;
+    }
+
+    // Av peşinde: böceği kovalar (böcek kaçtıkça rota güncellenir)
+    if (this.catHuntTarget) {
+      if (!this.catHuntTarget.active) {
+        this.catHuntTarget = null; // av kaçtı, boş ver
+        this.cat.setVelocity(0);
+        this.catTimer = Phaser.Math.Between(1000, 3000);
+        return;
+      }
+      const bug = this.catHuntTarget;
+      const dist = Phaser.Math.Distance.Between(this.cat.x, this.cat.y, bug.x, bug.y);
+      if (dist < 10) {
+        this.cat.setVelocity(0);
+        this.catchBug(bug);
+      } else {
+        this.physics.moveTo(this.cat, bug.x, bug.y, 72);
+      }
+      return;
+    }
+
     this.catTimer -= delta;
     if (this.catTimer > 0) return;
 
@@ -905,6 +1048,16 @@ export class GardenScene extends Phaser.Scene {
         this.catTimer = Phaser.Math.Between(2000, 6000);
       }
     } else {
+      // Ortada böcek varsa çoğu zaman ava çıkar
+      const prey = this.bugs.find((b) => b.active);
+      if (prey && Phaser.Math.Between(0, 100) < 65) {
+        this.catHuntTarget = prey;
+        if (Phaser.Math.Between(0, 100) < 40) {
+          this.showBubble(Phaser.Math.RND.pick(LINES.catHunt()));
+          this.resetIdleTimer();
+        }
+        return;
+      }
       const tx = Phaser.Math.Between(3, MAP_W - 3) * TILE;
       const ty = Phaser.Math.Between(10, MAP_H - 3) * TILE;
       this.physics.moveTo(this.cat, tx, ty, 40);

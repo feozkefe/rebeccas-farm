@@ -80,8 +80,12 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
 - [ ] Deploy (Vercel/Netlify — kullanıcı hesabı gerekiyor)
 
 ### V2 — Zaman kalırsa (hafta 3)
-- [x] Kedi yaramazlıkları: sulanmış yatağı eşeler (sulama bozulur),
-      bazen oyuncuya hediye getirir (+5c)
+- [x] Kedi yaramazlıkları: sulanmış yatağı eşeler (sulama bozulur) —
+      NADİR (4-7 dk'da bir en fazla; 12 Tem'de kullanıcı isteğiyle azaltıldı)
+- [x] Spicey böcek avcısı (12 Tem): bahçede arada sinek/böcek belirir,
+      Spicey görünce kovalar (böcek kaçar!), yakalayınca ✦ + ağzında
+      Rebecca'ya getirir → +1c + teşekkür diyaloğu ("Best hunter in
+      Berlin! Aferin Spicey!")
 - [x] Gün/gece tonu (cihaz saatine göre: şafak/gündüz/akşamüstü/gece)
 - [x] Berlin yağmuru: arada 35-70 sn yağar, tüm ekinleri sular, gri ton + damlalar
 - [x] Ses sistemi: Web Audio chiptune efektler (ek/sula/hasat/coin/mır/
