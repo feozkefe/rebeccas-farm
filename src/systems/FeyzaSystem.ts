@@ -200,11 +200,10 @@ export class FeyzaSystem {
     this.state = "toBench";
   }
 
-  /** Chill bitti: Feyza banktan kalkıp gider. */
+  /** Chill bitti: Feyza banktan kalkar ama hemen gitmez, biraz takılır. */
   leaveBench() {
     if (this.state === "atBench" || this.state === "toBench") {
-      this.bubble(this.feyza, Phaser.Math.RND.pick(BYE_F));
-      this.state = "leavingAlone";
+      this.enterHelping(Phaser.Math.Between(40_000, 70_000));
     }
   }
 
@@ -253,8 +252,13 @@ export class FeyzaSystem {
 
   private beginHelping() {
     this.c.sayRebecca(Phaser.Math.RND.pick(GREET));
+    this.enterHelping(Phaser.Math.Between(55_000, 95_000));
+  }
+
+  /** helping durumuna geç (ilk giriş, eve dönüş ve banktan sonra ortak). */
+  private enterHelping(stayMs: number) {
     this.state = "helping";
-    this.stayTimer = Phaser.Math.Between(55_000, 95_000);
+    this.stayTimer = stayMs;
     this.helpTimer = Phaser.Math.Between(4_000, 8_000);
     this.kissCooldown = 6_000;
     this.helpPlot = null;
@@ -346,6 +350,7 @@ export class FeyzaSystem {
     // İkisi kapıdan kaybolur; oyuncu bahçede kalır
     this.c.scene.tweens.add({ targets: [this.feyza, this.c.player], alpha: 0, duration: 400 });
     this.c.scene.time.delayedCall(420, () => {
+      if (this.state !== "home") return; // dönüş başladıysa gizleme
       this.feyza.setVisible(false).setActive(false);
       this.c.player.setVisible(false);
     });
@@ -376,22 +381,22 @@ export class FeyzaSystem {
   }
 
   private updateReturning() {
-    // Rebecca bahçeye döner (biraz içeri), Feyza vedalaşıp gider
+    // İkisi de bahçeye geri döner; Feyza gitmez, biraz takılırlar
     const inGarden = new Phaser.Math.Vector2(16 * TILE, 36 * TILE);
     this.walkTo(this.c.player, inGarden, 62);
     this.animateWalk(this.c.player);
-    this.walkTo(this.feyza, this.c.gateFront(), 60);
+    this.walkTo(this.feyza, new Phaser.Math.Vector2(inGarden.x - 14, inGarden.y), 60);
     this.depth(this.feyza);
     const playerHome = this.near(this.c.player, inGarden, 16);
     if (playerHome) {
       this.c.player.setVelocity(0).setAlpha(1);
+      this.feyza.setAlpha(1);
       // Kontrol geri: kamera Rebecca'yı takip etsin, kilit açılsın
       this.c.scene.cameras.main.startFollow(this.c.player, true, 0.12, 0.12);
       this.c.scene.registry.set("cutscene", false);
       this.bubble(this.feyza, Phaser.Math.RND.pick(RETURN_F));
-      this.hide();
-      this.state = "away";
-      this.visitTimer = Phaser.Math.Between(150_000, 280_000);
+      // Eve gittikten sonra bahçede beraber vakit geçirsinler
+      this.enterHelping(Phaser.Math.Between(50_000, 80_000));
     }
   }
 
