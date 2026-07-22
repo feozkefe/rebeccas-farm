@@ -17,15 +17,25 @@ const CHORDS: number[][] = [
   [196.0, 246.94, 293.66, 349.23], // G7
 ];
 
+// Romantik yürüyüş: Fmaj7 → G7 → Em7 → Am7 (daha sıcak, "beraber eve" anı)
+const ROMANTIC_CHORDS: number[][] = [
+  [174.61, 220.0, 261.63, 329.63], // Fmaj7
+  [196.0, 246.94, 293.66, 349.23], // G7
+  [164.81, 196.0, 246.94, 293.66], // Em7
+  [110.0, 130.81, 164.81, 196.0], // Am7
+];
+
 export class Music {
   private interval: ReturnType<typeof setInterval> | null = null;
   private chordIndex = 0;
   private nextBarAt = 0; // ctx saatine göre
   private isChill: () => boolean;
+  private isRomantic: () => boolean;
   private reverb: ConvolverNode | null = null;
 
-  constructor(isChill: () => boolean) {
+  constructor(isChill: () => boolean, isRomantic: () => boolean = () => false) {
     this.isChill = isChill;
+    this.isRomantic = isRomantic;
   }
 
   /** Basit reverb: sönümlenen gürültüden impulse response (bir kez üretilir) */
@@ -62,30 +72,33 @@ export class Music {
     if (ctx.currentTime + 0.5 < this.nextBarAt) return;
 
     const chill = this.isChill();
-    const barSec = chill ? 3.6 : 2.8;
+    const romantic = this.isRomantic();
+    const barSec = romantic ? 3.2 : chill ? 3.6 : 2.8;
     const t0 = Math.max(this.nextBarAt, ctx.currentTime + 0.1);
-    this.scheduleBar(t0, barSec, chill);
+    this.scheduleBar(t0, barSec, chill, romantic);
     this.nextBarAt = t0 + barSec;
-    this.chordIndex = (this.chordIndex + 1) % CHORDS.length;
+    const len = romantic ? ROMANTIC_CHORDS.length : CHORDS.length;
+    this.chordIndex = (this.chordIndex + 1) % len;
   }
 
-  private scheduleBar(t0: number, barSec: number, chill: boolean) {
+  private scheduleBar(t0: number, barSec: number, chill: boolean, romantic: boolean) {
     const a = audioEngine.get();
     if (!a) return;
     const { ctx, out } = a;
-    const chord = CHORDS[this.chordIndex];
+    const chordSet = romantic ? ROMANTIC_CHORDS : CHORDS;
+    const chord = chordSet[this.chordIndex % chordSet.length];
 
-    // Müzik yolu: lowpass → çıkış; chill'de üstüne yankı (reverb) katmanı
+    // Müzik yolu: lowpass → çıkış; chill/romantik'te üstüne yankı (reverb)
     const bus = ctx.createGain();
-    bus.gain.value = chill ? 0.5 : 0.42;
+    bus.gain.value = romantic ? 0.52 : chill ? 0.5 : 0.42;
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = chill ? 650 : 1100;
+    filter.frequency.value = romantic ? 900 : chill ? 650 : 1100;
     bus.connect(filter);
     filter.connect(out);
-    if (chill) {
+    if (chill || romantic) {
       const wet = ctx.createGain();
-      wet.gain.value = 0.55;
+      wet.gain.value = romantic ? 0.4 : 0.55;
       filter.connect(this.getReverb(ctx)).connect(wet).connect(out);
     }
 
@@ -104,7 +117,7 @@ export class Music {
     }
 
     // Arpej: akorun oktav üstünden 3-4 kısa nota, ölçüye serpilir
-    const steps = chill ? 3 : 4;
+    const steps = chill || romantic ? 3 : 4;
     for (let i = 0; i < steps; i++) {
       const freq = chord[(i * 2 + this.chordIndex) % chord.length] * 2;
       const t = t0 + (barSec / steps) * i + 0.15;

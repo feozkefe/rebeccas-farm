@@ -12,6 +12,7 @@ import { PlantSystem, type Plot, type InteractResult } from "../systems/PlantSys
 import { SaveSystem, type LaundryState } from "../systems/SaveSystem";
 import { Sfx } from "../systems/Sfx";
 import { Music } from "../systems/Music";
+import { FeyzaSystem } from "../systems/FeyzaSystem";
 import { audioEngine } from "../systems/AudioEngine";
 
 const PLAYER_SPEED = 80;
@@ -151,7 +152,11 @@ export class GardenScene extends Phaser.Scene {
   private bubble: Phaser.GameObjects.Container | null = null;
   private bubbleEvent: Phaser.Time.TimerEvent | null = null;
   private sfx = new Sfx();
-  private music = new Music(() => this.isChilling());
+  private music = new Music(
+    () => this.isChilling(),
+    () => this.registry.get("romantic") === true
+  );
+  private feyza!: FeyzaSystem;
   // Yağmur
   private raining = false;
   private nextRainAt = 0;
@@ -193,6 +198,16 @@ export class GardenScene extends Phaser.Scene {
     this.setupCamera();
     this.plants = new PlantSystem(this, buildPlotTiles(), soilImages);
     if (save) this.plants.restore(save.crops);
+    this.registry.set("romantic", false);
+    this.registry.set("cutscene", false);
+    this.feyza = new FeyzaSystem({
+      scene: this,
+      player: this.player,
+      plants: this.plants,
+      sfx: this.sfx,
+      gateFront: () => this.gateFrontVec(),
+      sayRebecca: (t) => this.showBubble(t),
+    });
     this.setupInput();
     this.setupAutosave();
     this.setupAudio();
@@ -262,7 +277,8 @@ export class GardenScene extends Phaser.Scene {
 
   /** Kurutucuya dokun: uzaksa yürü, yakınsa çamaşır sahnesini aç. */
   private tryOpenLaundry() {
-    if (this.registry.get("rolling") || !this.dryerObj) return;
+    if (this.registry.get("rolling") || this.registry.get("cutscene") || !this.dryerObj)
+      return;
     const front = new Phaser.Math.Vector2(
       this.dryerObj.x + this.dryerObj.displayWidth / 2,
       this.dryerObj.y + this.dryerObj.displayHeight + 6
@@ -349,13 +365,20 @@ export class GardenScene extends Phaser.Scene {
     }
   }
 
-  /** Kapıya dokun: uzaksa yürü, yakınsa Späti sahnesine geç. */
-  private tryGoSpati() {
-    if (this.registry.get("rolling") || !this.gateObj) return;
-    const front = new Phaser.Math.Vector2(
+  /** Kapının önündeki nokta (Feyza sistemi ve Späti için). */
+  private gateFrontVec() {
+    if (!this.gateObj) return new Phaser.Math.Vector2(16 * TILE, 41 * TILE);
+    return new Phaser.Math.Vector2(
       this.gateObj.x + this.gateObj.displayWidth / 2,
       this.gateObj.y - 6
     );
+  }
+
+  /** Kapıya dokun: uzaksa yürü, yakınsa Späti sahnesine geç. */
+  private tryGoSpati() {
+    if (this.registry.get("rolling") || this.registry.get("cutscene") || !this.gateObj)
+      return;
+    const front = this.gateFrontVec();
     if (!this.playerNear(front, 30)) {
       this.pendingPlot = null;
       this.pendingBench = false;
@@ -375,7 +398,8 @@ export class GardenScene extends Phaser.Scene {
     bench.setDepth(bench.y + bench.displayHeight);
     bench.setInteractive({ useHandCursor: true });
     bench.on("pointerdown", () => {
-      if (this.registry.get("rolling") || this.isChilling()) return;
+      if (this.registry.get("rolling") || this.registry.get("cutscene") || this.isChilling())
+        return;
       this.pendingBench = true;
       this.pendingPlot = null;
       const target = this.benchSeat();
@@ -431,8 +455,8 @@ export class GardenScene extends Phaser.Scene {
 
   private setupInput() {
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      // Sarma mini oyunu açıkken dokunuşlar oyun paneline gider
-      if (this.registry.get("rolling")) return;
+      // Alt-sahne veya cutscene sırasında bahçe dokunuşları kilitli
+      if (this.registry.get("rolling") || this.registry.get("cutscene")) return;
       const world = pointer.positionToCamera(
         this.cameras.main
       ) as Phaser.Math.Vector2;
@@ -671,22 +695,28 @@ export class GardenScene extends Phaser.Scene {
   // ---------- update döngüsü ----------
 
   update(_time: number, delta: number) {
-    this.updatePlayerMovement();
+    this.feyza.update(delta);
+    const cutscene = this.registry.get("cutscene") === true;
+    if (!cutscene) {
+      this.updatePlayerMovement();
+      this.updateMischief(delta);
+      this.updateIdleChatter(delta);
+      this.updateChillNotes(delta);
+      // Banktan kalkınca (uzaklaşınca) chill biter
+      if (this.isChilling() && !this.playerNear(this.benchSeat(), 14)) {
+        this.endChill();
+      }
+    }
     this.updateWalkAnimation();
     this.updateCat(delta);
-    this.updateMischief(delta);
     this.updateBugs(delta);
-    this.updateIdleChatter(delta);
-    this.updateChillNotes(delta);
     this.updateRain();
     this.updateLaundryBasket();
-    // Banktan kalkınca (uzaklaşınca) chill biter
-    if (this.isChilling() && !this.playerNear(this.benchSeat(), 14)) {
-      this.endChill();
-    }
     this.plants.update();
     this.positionBubble();
-    this.player.setDepth(this.player.y + this.player.displayHeight / 2);
+    if (this.player.visible) {
+      this.player.setDepth(this.player.y + this.player.displayHeight / 2);
+    }
     this.cat.setDepth(this.cat.y + this.cat.displayHeight / 2);
   }
 

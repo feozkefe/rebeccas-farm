@@ -20,7 +20,7 @@ export class BootScene extends Phaser.Scene {
     this.scene.start("Garden");
   }
 
-  /** El yapımı sprite'a 2 karelik bacak animasyonu (player_w1/w2) */
+  /** El yapımı sprite'lara 2 karelik bacak animasyonu */
   private createWalkAnimation() {
     this.anims.create({
       key: "walk",
@@ -29,6 +29,17 @@ export class BootScene extends Phaser.Scene {
         { key: "player" },
         { key: "player_w2" },
         { key: "player" },
+      ],
+      frameRate: 7,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "feyza-walk",
+      frames: [
+        { key: "feyza_w1" },
+        { key: "feyza" },
+        { key: "feyza_w2" },
+        { key: "feyza" },
       ],
       frameRate: 7,
       repeat: -1,
@@ -359,6 +370,11 @@ export class BootScene extends Phaser.Scene {
     this.drawRebecca("player_w1", 1); // sol bacak havada
     this.drawRebecca("player_w2", 2); // sağ bacak havada
 
+    // Feyza — 3 kare (koyu bob saç, siyah polo, krem pantolon, tote çanta)
+    this.drawFeyza("feyza", 0);
+    this.drawFeyza("feyza_w1", 1);
+    this.drawFeyza("feyza_w2", 2);
+
     // Kaliko kedi (beyaz + turuncu + siyah)
     const c = this.gfx();
     c.fillStyle(0xf5f0e8);
@@ -425,6 +441,45 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(4, 20 - leftUp, 3, 3);
     g.fillRect(9, 20 - rightUp, 3, 3);
     g.fillStyle(0x7a6a55);
+    g.fillRect(4, 23 - leftUp, 3, 1);
+    g.fillRect(9, 23 - rightUp, 3, 1);
+    g.generateTexture(key, 16, 24);
+    g.destroy();
+  }
+
+  /** Feyza: koyu kahve çene-hizası bob, siyah polo, krem geniş pantolon, tote çanta */
+  private drawFeyza(key: string, legPhase: number) {
+    const g = this.gfx();
+    // Bob saç — yanları yüz boyunca çeneye iner
+    g.fillStyle(0x3a2a20);
+    g.fillRect(3, 0, 10, 4); // tepe
+    g.fillRect(2, 2, 2, 8); // sol yan (çeneye kadar)
+    g.fillRect(12, 2, 2, 8); // sağ yan
+    g.fillStyle(0x2a1e17); // orta ayrım gölgesi
+    g.fillRect(7, 0, 2, 2);
+    g.fillStyle(0xe0b088); // yüz (orta ten)
+    g.fillRect(4, 4, 8, 5);
+    g.fillStyle(0x2a1e17); // koyu gözler
+    g.fillRect(5, 5, 2, 2);
+    g.fillRect(9, 5, 2, 2);
+    g.fillStyle(0x111111); // siyah polo (bol)
+    g.fillRect(3, 9, 10, 7);
+    g.fillStyle(0x2a2a2a); // yaka + düğme detayı
+    g.fillRect(6, 9, 4, 1);
+    g.fillRect(7, 10, 1, 3);
+    g.fillStyle(0xf0ece0); // krem tote çanta (sağ omuzda)
+    g.fillRect(11, 10, 4, 7);
+    g.fillStyle(0xdcd6c4); // çanta sapı
+    g.fillRect(10, 8, 1, 4);
+    g.fillStyle(0xf2efe6); // krem geniş pantolon (bol paça)
+    g.fillRect(3, 16, 10, 5);
+    // Bacaklar/paçalar — yürürken biri 1px yukarı
+    const leftUp = legPhase === 1 ? 1 : 0;
+    const rightUp = legPhase === 2 ? 1 : 0;
+    g.fillStyle(0xf2efe6);
+    g.fillRect(4, 21 - leftUp, 3, 2);
+    g.fillRect(9, 21 - rightUp, 3, 2);
+    g.fillStyle(0xd8d2c0); // krem sandalet
     g.fillRect(4, 23 - leftUp, 3, 1);
     g.fillRect(9, 23 - rightUp, 3, 1);
     g.generateTexture(key, 16, 24);

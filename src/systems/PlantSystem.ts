@@ -166,6 +166,31 @@ export class PlantSystem {
     plot.soilImage.clearTint();
   }
 
+  /** Feyza yardımı için: sulanmamış rastgele bir ekin (yoksa null). */
+  randomUnwateredPlot(): Plot | null {
+    const candidates = [...this.plots.values()].filter(
+      (p) => p.crop && !p.crop.watered && p.crop.stage < MATURE_STAGE
+    );
+    return candidates.length > 0 ? Phaser.Math.RND.pick(candidates) : null;
+  }
+
+  /** Belirli bir plotu sular (Feyza yardımı). */
+  waterPlot(plot: Plot): boolean {
+    const crop = plot.crop;
+    if (!crop || crop.watered || crop.stage >= MATURE_STAGE) return false;
+    crop.watered = true;
+    crop.wateredAt = Date.now();
+    plot.soilImage.setTint(WATERED_TINT);
+    return true;
+  }
+
+  /** "Zaman hızlı geçti" — sulanmış ekinlerin büyümesini öne alır. */
+  fastForward(ms: number) {
+    for (const plot of this.plots.values()) {
+      if (plot.crop && plot.crop.watered) plot.crop.wateredAt -= ms;
+    }
+  }
+
   /** Kayıt için ekin durumlarını döker. */
   serialize(): CropSave[] {
     const out: CropSave[] = [];
