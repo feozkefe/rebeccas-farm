@@ -132,9 +132,7 @@ export const MAP_OBJECTS: MapObject[] = [
     tx: bed.tx,
     ty: bed.ty,
   })),
-  // Flohmarkt tezgahı — terasta, kulübenin solu (dokun → dekorasyon dükkanı)
-  { texture: "market", tx: 20, ty: 3 },
-  // Kapı — alt orta ("140")
+  // Kapı — alt orta ("140"): dokun → Späti / Flohmarkt seçimi
   { texture: "gate", tx: 13, ty: 42 },
 ];
 

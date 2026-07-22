@@ -269,11 +269,6 @@ export class GardenScene extends Phaser.Scene {
         img.setInteractive({ useHandCursor: true });
         img.on("pointerdown", () => this.tryGoSpati());
       }
-      // Flohmarkt tezgahı: dekorasyon dükkanı
-      if (obj.texture === "market") {
-        img.setInteractive({ useHandCursor: true });
-        img.on("pointerdown", () => this.openFlohmarkt());
-      }
       // Kulübe: dekorasyon envanteri (satın alınanlar burada durur)
       if (obj.texture === "shed") {
         img.setInteractive({ useHandCursor: true });
@@ -404,9 +399,14 @@ export class GardenScene extends Phaser.Scene {
     );
   }
 
-  /** Kapıya dokun: uzaksa yürü, yakınsa Späti sahnesine geç. */
+  /** Kapıya dokun: uzaksa yürü, yakınsa Späti/Flohmarkt seçim menüsü. */
   private tryGoSpati() {
-    if (this.registry.get("rolling") || this.registry.get("cutscene") || !this.gateObj)
+    if (
+      this.registry.get("rolling") ||
+      this.registry.get("cutscene") ||
+      this.registry.get("placing") ||
+      !this.gateObj
+    )
       return;
     const front = this.gateFrontVec();
     if (!this.playerNear(front, 30)) {
@@ -417,8 +417,66 @@ export class GardenScene extends Phaser.Scene {
       this.physics.moveTo(this.player, front.x, front.y, PLAYER_SPEED);
       return;
     }
-    this.showBubble(Phaser.Math.RND.pick(LINES.spatiTrip()));
-    this.scene.launch("Spati", { onClose: () => this.saveNow() });
+    this.showGateChoice();
+  }
+
+  /** Kapıda: nereye? Späti mi Flohmarkt mı — UI sahnesinde okunaklı menü. */
+  private showGateChoice() {
+    const ui = this.scene.get("UI");
+    const w = ui.scale.width;
+    const h = ui.scale.height;
+    const layer = ui.add.container(0, 0).setDepth(97000);
+    const shade = ui.add
+      .rectangle(0, 0, w, h, 0x000000, 0.45)
+      .setOrigin(0)
+      .setInteractive();
+    shade.on("pointerdown", () => layer.destroy());
+    layer.add(shade);
+
+    const pw = Math.min(w * 0.8, 300);
+    const cx = w / 2;
+    const cy = h / 2;
+    const bg = ui.add.graphics();
+    bg.fillStyle(0x2a2038, 0.98);
+    bg.fillRoundedRect(cx - pw / 2, cy - 90, pw, 180, 14);
+    bg.lineStyle(3, 0x9a6ac8, 0.9);
+    bg.strokeRoundedRect(cx - pw / 2, cy - 90, pw, 180, 14);
+    layer.add(bg);
+    layer.add(
+      ui.add
+        .text(cx, cy - 74, "Nereye gidelim?", {
+          fontFamily: "monospace",
+          fontSize: "16px",
+          color: "#f0e0ff",
+        })
+        .setOrigin(0.5, 0)
+    );
+
+    const mkBtn = (y: number, label: string, color: string, fn: () => void) => {
+      const b = ui.add
+        .text(cx, y, label, {
+          fontFamily: "monospace",
+          fontSize: "17px",
+          color: "#ffffff",
+          backgroundColor: color,
+          padding: { x: 18, y: 12 },
+          align: "center",
+          fixedWidth: pw - 48,
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true });
+      b.setStyle({ align: "center" });
+      b.on("pointerdown", () => {
+        layer.destroy();
+        fn();
+      });
+      layer.add(b);
+    };
+    mkBtn(cy - 24, "🏪  Kiosk 44", "#3a6a8a", () => {
+      this.showBubble(Phaser.Math.RND.pick(LINES.spatiTrip()));
+      this.scene.launch("Spati", { onClose: () => this.saveNow() });
+    });
+    mkBtn(cy + 34, "🛒  Flohmarkt", "#3a7a4a", () => this.openFlohmarkt());
   }
 
   /** Flohmarkt dükkanını aç (dekorasyon satın alma). */
@@ -506,11 +564,8 @@ export class GardenScene extends Phaser.Scene {
       const world = pointer.positionToCamera(
         this.cameras.main
       ) as Phaser.Math.Vector2;
-      // Yerleştirme modu: dokunulan yere dekorasyonu koy
-      if (this.registry.get("placing")) {
-        this.deco.placeAt(world);
-        return;
-      }
+      // Yerleştirme modu: bahçe tap'i yok (kaydır + "Buraya koy" butonu)
+      if (this.registry.get("placing")) return;
       const tx = Math.floor(world.x / TILE);
       const ty = Math.floor(world.y / TILE);
 
@@ -530,6 +585,14 @@ export class GardenScene extends Phaser.Scene {
       }
       this.moveTarget = target;
       this.physics.moveTo(this.player, target.x, target.y, PLAYER_SPEED);
+    });
+
+    // Yerleştirme modunda bahçeyi sürükleyerek kaydır (kamera pan)
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      if (!this.registry.get("placing") || !pointer.isDown) return;
+      const cam = this.cameras.main;
+      cam.scrollX -= (pointer.x - pointer.prevPosition.x) / cam.zoom;
+      cam.scrollY -= (pointer.y - pointer.prevPosition.y) / cam.zoom;
     });
   }
 
@@ -809,6 +872,7 @@ export class GardenScene extends Phaser.Scene {
     this.updateBugs(delta);
     this.updateRain();
     this.updateLaundryBasket();
+    this.deco.update();
     this.plants.update();
     this.positionBubble();
     if (this.player.visible) {

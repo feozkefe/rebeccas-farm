@@ -12,14 +12,14 @@ export interface DecorationDef {
 }
 
 export const DECORATIONS: DecorationDef[] = [
-  { id: "pond", name: "Little Pond", emoji: "⛲", price: 60 },
-  { id: "hammock", name: "Hammock", emoji: "🛏️", price: 45 },
-  { id: "gnome", name: "Garden Gnome", emoji: "🧙", price: 25 },
-  { id: "fairylights", name: "Fairy Lights", emoji: "✨", price: 30 },
-  { id: "flamingo", name: "Flamingo", emoji: "🦩", price: 20 },
-  { id: "birdbath", name: "Bird Bath", emoji: "🐦", price: 35 },
-  { id: "lantern", name: "Lantern", emoji: "🏮", price: 18 },
-  { id: "mushroom", name: "Toadstools", emoji: "🍄", price: 15 },
+  { id: "pond", name: "Little Pond", emoji: "⛲", price: 140 },
+  { id: "hammock", name: "Hammock", emoji: "🛏️", price: 110 },
+  { id: "gnome", name: "Garden Gnome", emoji: "🧙", price: 60 },
+  { id: "fairylights", name: "Fairy Lights", emoji: "✨", price: 75 },
+  { id: "flamingo", name: "Flamingo", emoji: "🦩", price: 50 },
+  { id: "birdbath", name: "Bird Bath", emoji: "🐦", price: 85 },
+  { id: "lantern", name: "Lantern", emoji: "🏮", price: 45 },
+  { id: "mushroom", name: "Toadstools", emoji: "🍄", price: 35 },
 ];
 
 export function decoById(id: string): DecorationDef | undefined {

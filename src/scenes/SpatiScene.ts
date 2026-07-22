@@ -17,9 +17,9 @@ interface Product {
 }
 
 const PRODUCTS: Product[] = [
-  { key: "papers", emoji: "📄", name: "Papers", price: 3 },
-  { key: "tobacco", emoji: "🚬", name: "Tobacco", price: 5 },
-  { key: "weed", emoji: "🌿", name: "Green", price: 10 },
+  { key: "papers", emoji: "📄", name: "Papers", price: 6 },
+  { key: "tobacco", emoji: "🚬", name: "Tobacco", price: 10 },
+  { key: "weed", emoji: "🌿", name: "Green", price: 22 },
 ];
 
 /** Selamlaşma çiftleri: [Hamudi, Rebecca] — Almanca, B1 tadında */

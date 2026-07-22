@@ -108,12 +108,14 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
       - **Bankta beraber weed:** chill'deyken bankın üstünde "💕 Feyza?"
         butonu çıkar → basınca Feyza gelip yanına oturur, ikisi tüter +
         kalpler; banktan kalkınca Feyza da gider.
-- [x] **Flohmarkt dekorasyon sistemi** (22 Tem): terastaki çizgili tezgaha
-      dokun → Flohmarkt sahnesi, coin ile 8 dekorasyon (havuz, hamak, cüce,
-      peri ışıkları, flamingo, kuş banyosu, fener, mantar). Alınanlar
-      **kulübe (shed) envanterine** düşer → kulübeye dokun → öğe seç →
-      **yerleştirme modu** (dokunduğun yere koy) → yerleştirilmiş öğeye
-      dokun → **taşı / kulübeye kaldır** menüsü. Hepsi kayıtlı.
+- [x] **Flohmarkt dekorasyon sistemi** (22 Tem): **bahçe kapısına** dokun →
+      "Kiosk 44 / Flohmarkt" seçimi → Flohmarkt'ta coin ile 8 dekorasyon
+      (havuz, hamak, cüce, peri ışıkları, flamingo, kuş banyosu, fener,
+      mantar). Alınanlar **kulübe (shed) envanterine** düşer → kulübeye dokun
+      → öğe seç → **yerleştirme modu**: bahçeyi sürükleyip yeri ortala →
+      "Buraya koy" (her yere konabilir) → yerleştirilmiş öğeye dokun →
+      **taşı / kaldır** menüsü. Tüm menüler zoom'suz UI katmanında (okunaklı).
+      Fiyatlar yükseltildi (dekor + Späti). Hepsi kayıtlı.
 - [ ] Anı koleksiyonu: hedeflere ulaşınca açılan ortak fotoğraflar/notlar
       (kullanıcıdan fotoğraf bekleniyor)
 
