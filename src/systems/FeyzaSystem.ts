@@ -21,7 +21,9 @@ type State =
   | "leavingAlone"
   | "toGate"
   | "home"
-  | "returning";
+  | "returning"
+  | "toBench"
+  | "atBench";
 
 export interface FeyzaCtx {
   scene: Phaser.Scene;
@@ -55,6 +57,11 @@ const RETURN_R = ["We're back! Döndük 💕", "Ahh, iyi geldi. Neredeyse akşam
 const RETURN_F = ["That was nice 🥰", "Bahçe bize emanetti Spicey, aferin."];
 const BYE_F = ["Kaçtım ben, görüşürüz! 💕", "Bye love! Sonra gelirim."];
 const BYE_R = ["Bye canım! 💕", "Görüşürüz aşkım 🥰"];
+const BENCH_F = [
+  "Bana da sar bakiim 🌿💕",
+  "Beraber içmek daha güzel.",
+  "Geldim aşkım, kaydır bakalım.",
+];
 
 export class FeyzaSystem {
   private c: FeyzaCtx;
@@ -67,6 +74,9 @@ export class FeyzaSystem {
   private homeTimer = 0;
   private heartTimer = 0;
   private helpPlot: { tx: number; ty: number } | null = null;
+  private firstVisitDone = false; // ilk gelişte beraber eve giderler
+  private benchSeat: Phaser.Math.Vector2 | null = null; // bankta buluşma noktası
+  private benchPuffTimer = 0;
 
   constructor(ctx: FeyzaCtx) {
     this.c = ctx;
@@ -96,7 +106,14 @@ export class FeyzaSystem {
         this.depth(this.feyza);
         if (this.near(this.feyza, this.playerVec(), 34)) {
           this.feyza.setVelocity(0);
-          this.beginHelping();
+          // İlk ziyaret: hemen beraber eve; sonrakiler: yardım döngüsü
+          if (!this.firstVisitDone) {
+            this.firstVisitDone = true;
+            this.c.sayRebecca(Phaser.Math.RND.pick(GREET));
+            this.startToGate();
+          } else {
+            this.beginHelping();
+          }
         }
         break;
       case "helping":
@@ -130,10 +147,96 @@ export class FeyzaSystem {
       case "returning":
         this.updateReturning();
         break;
+      case "toBench":
+        this.walkTo(this.feyza, this.benchSeat!, 66);
+        this.depth(this.feyza);
+        if (this.near(this.feyza, this.benchSeat!, 8)) {
+          this.feyza.setPosition(this.benchSeat!.x, this.benchSeat!.y).setVelocity(0);
+          this.state = "atBench";
+          this.benchPuffTimer = 800;
+          this.bubble(this.feyza, Phaser.Math.RND.pick(BENCH_F));
+        }
+        break;
+      case "atBench":
+        this.depth(this.feyza);
+        this.benchPuffTimer -= delta;
+        if (this.benchPuffTimer <= 0) {
+          this.benchPuff();
+          this.benchPuffTimer = Phaser.Math.Between(1400, 2400);
+        }
+        break;
     }
-    // Feyza görünürse yürüyüş animasyonunu sür
-    if (this.feyza.visible && this.state !== "home") {
+    // Feyza görünürse yürüyüş animasyonunu sür (bankta otururken hariç)
+    if (this.feyza.visible && this.state !== "home" && this.state !== "atBench") {
       this.animateWalk(this.feyza);
+    }
+  }
+
+  // ---------- bankta beraber weed (Rebecca çağırır) ----------
+
+  /** Chill sırasında çağrılabilir mi? (evde/cutscene'de değilse) */
+  canJoinBench() {
+    return (
+      this.state === "away" ||
+      this.state === "helping" ||
+      this.state === "arriving" ||
+      this.state === "leavingAlone"
+    );
+  }
+
+  atBenchNow() {
+    return this.state === "atBench" || this.state === "toBench";
+  }
+
+  /** Rebecca çağırdı: Feyza gelip bankta yanına otursun. seat = yan koltuk. */
+  comeToBench(seat: Phaser.Math.Vector2) {
+    if (!this.canJoinBench()) return;
+    this.benchSeat = seat.clone();
+    if (!this.feyza.visible) {
+      const gate = this.c.gateFront();
+      this.feyza.setPosition(gate.x, gate.y).setVisible(true).setActive(true).setAlpha(1);
+    }
+    this.helpPlot = null;
+    this.state = "toBench";
+  }
+
+  /** Chill bitti: Feyza banktan kalkıp gider. */
+  leaveBench() {
+    if (this.state === "atBench" || this.state === "toBench") {
+      this.bubble(this.feyza, Phaser.Math.RND.pick(BYE_F));
+      this.state = "leavingAlone";
+    }
+  }
+
+  private benchPuff() {
+    // İki minik duman + arada kalp (Rebecca + Feyza yan yana bankta)
+    const xs = [this.feyza.x + 3, this.c.player.x + 3];
+    for (const x of xs) {
+      const puff = this.c.scene.add
+        .circle(x, this.feyza.y - 8, 1.5, 0xcccccc, 0.7)
+        .setDepth(100000);
+      this.c.scene.tweens.add({
+        targets: puff,
+        y: puff.y - 12,
+        alpha: 0,
+        scale: 2.4,
+        duration: 1100,
+        onComplete: () => puff.destroy(),
+      });
+    }
+    if (Phaser.Math.Between(0, 100) < 45) {
+      const mx = (this.feyza.x + this.c.player.x) / 2;
+      const heart = this.c.scene.add
+        .text(mx, this.feyza.y - 10, "❤", { fontSize: "8px", color: "#ff5a8a" })
+        .setOrigin(0.5)
+        .setDepth(100000);
+      this.c.scene.tweens.add({
+        targets: heart,
+        y: heart.y - 14,
+        alpha: 0,
+        duration: 1200,
+        onComplete: () => heart.destroy(),
+      });
     }
   }
 

@@ -447,19 +447,19 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
-  /** Feyza: koyu kahve çene-hizası bob, siyah polo, krem geniş pantolon, tote çanta */
+  /** Feyza: kahverengi çene-hizası bob, kahverengi gözler, siyah polo, krem pantolon */
   private drawFeyza(key: string, legPhase: number) {
     const g = this.gfx();
-    // Bob saç — yanları yüz boyunca çeneye iner
-    g.fillStyle(0x3a2a20);
+    // Bob saç — kahverengi, yanları yüz boyunca çeneye iner
+    g.fillStyle(0x6b4a2f);
     g.fillRect(3, 0, 10, 4); // tepe
     g.fillRect(2, 2, 2, 8); // sol yan (çeneye kadar)
     g.fillRect(12, 2, 2, 8); // sağ yan
-    g.fillStyle(0x2a1e17); // orta ayrım gölgesi
+    g.fillStyle(0x5a3a24); // orta ayrım gölgesi
     g.fillRect(7, 0, 2, 2);
     g.fillStyle(0xe0b088); // yüz (orta ten)
     g.fillRect(4, 4, 8, 5);
-    g.fillStyle(0x2a1e17); // koyu gözler
+    g.fillStyle(0x5a3a2a); // kahverengi gözler
     g.fillRect(5, 5, 2, 2);
     g.fillRect(9, 5, 2, 2);
     g.fillStyle(0x111111); // siyah polo (bol)
@@ -467,10 +467,6 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0x2a2a2a); // yaka + düğme detayı
     g.fillRect(6, 9, 4, 1);
     g.fillRect(7, 10, 1, 3);
-    g.fillStyle(0xf0ece0); // krem tote çanta (sağ omuzda)
-    g.fillRect(11, 10, 4, 7);
-    g.fillStyle(0xdcd6c4); // çanta sapı
-    g.fillRect(10, 8, 1, 4);
     g.fillStyle(0xf2efe6); // krem geniş pantolon (bol paça)
     g.fillRect(3, 16, 10, 5);
     // Bacaklar/paçalar — yürürken biri 1px yukarı

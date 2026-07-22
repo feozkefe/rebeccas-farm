@@ -98,11 +98,16 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
       → 3 dk'da kurur (yağmur yağarsa ıslanır, baştan!) → topla +3c/parça
       → 5 dk sonra yeni sepet. Durum kayıtlı, offline kuruma çalışır.
 - [x] Kedi mırlaması yumuşatıldı (LFO'lu tatlı "prrr", 7 Tem)
-- [x] **Feyza** (22 Tem): arada bahçeye gelen sevgili — koyu bob saç, siyah
-      polo, krem geniş pantolon + tote çanta. Kapıdan girer, ekinleri sular,
-      yan yana gelince **kalpli öpüşme anı**. Bazen (%45) **beraber eve** gider:
-      cutscene — ikisi kapıdan kaybolur, oyuncu bahçede kalır (Spicey gezinir),
-      zaman hızlı geçer + romantik müzik + süzülen kalpler, ~30 sn sonra dönerler.
+- [x] **Feyza** (22 Tem): arada bahçeye gelen sevgili — kahverengi bob saç,
+      kahverengi göz, siyah polo, krem geniş pantolon (çanta yok). Kapıdan girer,
+      ekinleri sular, yan yana gelince **kalpli öpüşme anı**. Bazen (%45)
+      **beraber eve** gider: cutscene — ikisi kapıdan kaybolur, oyuncu bahçede
+      kalır (Spicey gezinir), zaman hızlı geçer + romantik müzik + süzülen
+      kalpler, ~30 sn sonra dönerler.
+      - **İlk ziyaret** hep "beraber eve" ile başlar.
+      - **Bankta beraber weed:** chill'deyken bankın üstünde "💕 Feyza?"
+        butonu çıkar → basınca Feyza gelip yanına oturur, ikisi tüter +
+        kalpler; banktan kalkınca Feyza da gider.
 - [ ] Dekorasyon dükkanı (saksı, cüce, fener) — Berlin Flohmarkt teması
 - [ ] Anı koleksiyonu: hedeflere ulaşınca açılan ortak fotoğraflar/notlar
       (kullanıcıdan fotoğraf bekleniyor)

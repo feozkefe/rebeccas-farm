@@ -157,6 +157,8 @@ export class GardenScene extends Phaser.Scene {
     () => this.registry.get("romantic") === true
   );
   private feyza!: FeyzaSystem;
+  private callFeyzaBtn: Phaser.GameObjects.Text | null = null;
+  private suppressTap = false; // buton dokunuşu bahçe tap'ine düşmesin
   // Yağmur
   private raining = false;
   private nextRainAt = 0;
@@ -455,6 +457,11 @@ export class GardenScene extends Phaser.Scene {
 
   private setupInput() {
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      // Feyza'yı çağır butonuna basıldıysa bu dokunuşu yut (yürütme)
+      if (this.suppressTap) {
+        this.suppressTap = false;
+        return;
+      }
       // Alt-sahne veya cutscene sırasında bahçe dokunuşları kilitli
       if (this.registry.get("rolling") || this.registry.get("cutscene")) return;
       const world = pointer.positionToCamera(
@@ -625,11 +632,56 @@ export class GardenScene extends Phaser.Scene {
     }
 
     this.registry.set("chilling", true);
+    this.showCallFeyzaButton();
+  }
+
+  /** Chill sırasında "Feyza'yı çağır" butonu — bankın üstünde belirir */
+  private showCallFeyzaButton() {
+    this.callFeyzaBtn?.destroy();
+    if (!this.feyza.canJoinBench() || this.feyza.atBenchNow()) return;
+    const seat = this.benchSeat();
+    const btn = this.add
+      .text(seat.x, seat.y - 26, "💕 Feyza?", {
+        fontFamily: "monospace",
+        fontSize: "8px",
+        color: "#ffffff",
+        backgroundColor: "#c8508acc",
+        padding: { x: 4, y: 3 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(100002)
+      .setInteractive({ useHandCursor: true });
+    btn.on("pointerdown", (
+      _p: unknown,
+      _x: unknown,
+      _y: unknown,
+      ev?: { stopPropagation?: () => void }
+    ) => {
+      ev?.stopPropagation?.();
+      this.suppressTap = true;
+      // Feyza Rebecca'nın soluna otursun
+      this.feyza.comeToBench(new Phaser.Math.Vector2(seat.x - 14, seat.y - 6));
+      this.showBubble("Feyza! Gel, beraber içelim 💕🌿");
+      btn.destroy();
+      this.callFeyzaBtn = null;
+    });
+    this.tweens.add({
+      targets: btn,
+      y: btn.y - 2,
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut",
+    });
+    this.callFeyzaBtn = btn;
   }
 
   /** Banktan kalkınca chill biter */
   private endChill() {
     this.registry.set("chilling", false);
+    this.callFeyzaBtn?.destroy();
+    this.callFeyzaBtn = null;
+    this.feyza.leaveBench();
     this.showBubble(
       Phaser.Math.RND.pick([
         "Okay, back to the garden! Hadi işe.",
