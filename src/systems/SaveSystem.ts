@@ -24,6 +24,13 @@ export interface LaundryState {
   nextBasketAt: number;
 }
 
+export interface DecoSave {
+  id: string; // decorations.ts id
+  placed: boolean; // false = kulübe envanterinde
+  tx: number;
+  ty: number;
+}
+
 export interface SaveData {
   coins: number;
   seedIndex: number;
@@ -32,6 +39,7 @@ export interface SaveData {
   tobacco?: number;
   weed?: number;
   laundry?: LaundryState;
+  decorations?: DecoSave[];
   crops: CropSave[];
   savedAt: number;
 }

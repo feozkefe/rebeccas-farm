@@ -16,8 +16,144 @@ export class BootScene extends Phaser.Scene {
     this.createObjectTextures();
     this.createCharacterTextures();
     this.createWalkAnimation();
+    this.createDecorationTextures();
     for (const p of PLANTS) this.createPlantTextures(p);
     this.scene.start("Garden");
+  }
+
+  /** Flohmarkt dekorasyonları — deco_<id>, alt-orta origin için tasarlı */
+  private createDecorationTextures() {
+    let g = this.gfx();
+    // Süs havuzu — 40x24: taş kenar + mavi su + nilüfer
+    g.fillStyle(0x8a8a80);
+    g.fillEllipse(20, 16, 40, 16);
+    g.fillStyle(0x4a90d9);
+    g.fillEllipse(20, 15, 32, 11);
+    g.fillStyle(0x6ab0e8);
+    g.fillEllipse(15, 13, 12, 4);
+    g.fillStyle(0x3e8e3e);
+    g.fillEllipse(26, 16, 8, 4); // nilüfer yaprağı
+    g.fillStyle(0xe89ac8);
+    g.fillCircle(26, 15, 2); // çiçek
+    g.generateTexture("deco_pond", 40, 26);
+    g.destroy();
+
+    // Hamak — 44x22: iki direk + file
+    g = this.gfx();
+    g.fillStyle(0x6b4a2f);
+    g.fillRect(1, 2, 3, 18);
+    g.fillRect(40, 2, 3, 18);
+    g.fillStyle(0xd96a8a);
+    g.fillEllipse(22, 12, 38, 10); // hamak kumaşı
+    g.lineStyle(1, 0xb84a6a);
+    g.lineBetween(4, 8, 40, 8);
+    g.lineBetween(4, 12, 40, 14);
+    g.generateTexture("deco_hammock", 44, 22);
+    g.destroy();
+
+    // Bahçe cücesi — 14x20: kırmızı külah, sakal
+    g = this.gfx();
+    g.fillStyle(0xd93a3a);
+    g.fillTriangle(7, 0, 2, 9, 12, 9); // külah
+    g.fillStyle(0xf0c8a0);
+    g.fillCircle(7, 11, 4); // yüz
+    g.fillStyle(0xf5f5f5);
+    g.fillTriangle(3, 11, 11, 11, 7, 18); // sakal
+    g.fillStyle(0x4a7ac8);
+    g.fillRect(4, 15, 6, 5); // gövde
+    g.generateTexture("deco_gnome", 14, 20);
+    g.destroy();
+
+    // Peri ışıkları — 40x14: ip + renkli ampuller
+    g = this.gfx();
+    g.lineStyle(1, 0x5a5a50);
+    g.beginPath();
+    g.moveTo(0, 3);
+    for (let x = 0; x <= 40; x += 8) g.lineTo(x, 3 + (x % 16 === 0 ? 0 : 5));
+    g.strokePath();
+    const bulbs = [0xf2c53d, 0xe23d2e, 0x5ec850, 0x4a90d9, 0xe89ac8];
+    for (let i = 0; i < 5; i++) {
+      g.fillStyle(bulbs[i]);
+      g.fillCircle(4 + i * 8, 9, 2.4);
+    }
+    g.generateTexture("deco_fairylights", 40, 14);
+    g.destroy();
+
+    // Flamingo — 14x26: pembe, tek ayak
+    g = this.gfx();
+    g.fillStyle(0xe86a9a);
+    g.fillEllipse(7, 14, 10, 8); // gövde
+    g.fillRect(6, 4, 2, 10); // boyun
+    g.fillCircle(7, 4, 2.5); // kafa
+    g.fillStyle(0x2a2a2a);
+    g.fillRect(8, 3, 2, 1); // gaga
+    g.lineStyle(1, 0xd94a7a);
+    g.lineBetween(7, 18, 7, 26); // ayak
+    g.generateTexture("deco_flamingo", 14, 26);
+    g.destroy();
+
+    // Kuş banyosu — 16x22: ayak + taş kase + su
+    g = this.gfx();
+    g.fillStyle(0x9a9a90);
+    g.fillRect(6, 8, 4, 14); // ayak
+    g.fillEllipse(8, 20, 12, 4); // taban
+    g.fillStyle(0xb0b0a6);
+    g.fillEllipse(8, 8, 15, 7); // kase
+    g.fillStyle(0x4a90d9);
+    g.fillEllipse(8, 7, 11, 4); // su
+    g.generateTexture("deco_birdbath", 16, 22);
+    g.destroy();
+
+    // Fener — 10x20: direk + fener kutusu (gece parlar hissi)
+    g = this.gfx();
+    g.fillStyle(0x3a3a42);
+    g.fillRect(4, 6, 2, 14); // direk
+    g.fillStyle(0x2a2a30);
+    g.fillRect(1, 0, 8, 7); // fener gövdesi
+    g.fillStyle(0xf2d84a);
+    g.fillRect(3, 2, 4, 4); // ışık
+    g.generateTexture("deco_lantern", 10, 20);
+    g.destroy();
+
+    // Mantarlar — 16x12: kırmızı-beyaz benekli grup
+    g = this.gfx();
+    g.fillStyle(0xf5f5e8);
+    g.fillRect(3, 7, 2, 4);
+    g.fillRect(9, 8, 2, 3);
+    g.fillStyle(0xd93a3a);
+    g.fillEllipse(4, 7, 7, 5);
+    g.fillEllipse(10, 8, 6, 4);
+    g.fillStyle(0xffffff);
+    g.fillCircle(3, 6, 1);
+    g.fillCircle(5, 7, 1);
+    g.fillCircle(10, 7, 1);
+    g.generateTexture("deco_mushroom", 16, 12);
+    g.destroy();
+
+    // Flohmarkt tezgahı — 40x36: çizgili tente + masa + eşyalar
+    g = this.gfx();
+    g.fillStyle(0x8a5a3b);
+    g.fillRect(3, 18, 34, 4); // masa üstü
+    g.fillRect(5, 22, 3, 12); // ayak
+    g.fillRect(32, 22, 3, 12);
+    // Çizgili tente (kırmızı-beyaz)
+    for (let i = 0; i < 6; i++) {
+      g.fillStyle(i % 2 === 0 ? 0xd93a3a : 0xf5f5e8);
+      g.fillRect(2 + i * 6, 4, 6, 8);
+    }
+    g.fillStyle(0x6b4a2f);
+    g.fillRect(2, 12, 36, 2); // tente alt kenar
+    // Masadaki ıvır zıvır
+    g.fillStyle(0x4a90d9);
+    g.fillCircle(10, 16, 2);
+    g.fillStyle(0xf2c53d);
+    g.fillRect(16, 14, 4, 4);
+    g.fillStyle(0xe89ac8);
+    g.fillCircle(26, 16, 2);
+    g.fillStyle(0x5ec850);
+    g.fillRect(30, 14, 3, 4);
+    g.generateTexture("market", 40, 36);
+    g.destroy();
   }
 
   /** El yapımı sprite'lara 2 karelik bacak animasyonu */

@@ -13,6 +13,7 @@ import { SaveSystem, type LaundryState } from "../systems/SaveSystem";
 import { Sfx } from "../systems/Sfx";
 import { Music } from "../systems/Music";
 import { FeyzaSystem } from "../systems/FeyzaSystem";
+import { DecorationSystem } from "../systems/DecorationSystem";
 import { audioEngine } from "../systems/AudioEngine";
 
 const PLAYER_SPEED = 80;
@@ -157,6 +158,7 @@ export class GardenScene extends Phaser.Scene {
     () => this.registry.get("romantic") === true
   );
   private feyza!: FeyzaSystem;
+  private deco!: DecorationSystem;
   private callFeyzaBtn: Phaser.GameObjects.Text | null = null;
   private suppressTap = false; // buton dokunuşu bahçe tap'ine düşmesin
   // Yağmur
@@ -202,6 +204,7 @@ export class GardenScene extends Phaser.Scene {
     if (save) this.plants.restore(save.crops);
     this.registry.set("romantic", false);
     this.registry.set("cutscene", false);
+    this.registry.set("placing", false);
     this.feyza = new FeyzaSystem({
       scene: this,
       player: this.player,
@@ -210,6 +213,17 @@ export class GardenScene extends Phaser.Scene {
       gateFront: () => this.gateFrontVec(),
       sayRebecca: (t) => this.showBubble(t),
     });
+    this.deco = new DecorationSystem(
+      {
+        scene: this,
+        sfx: this.sfx,
+        save: () => this.saveNow(),
+        suppressTap: () => {
+          this.suppressTap = true;
+        },
+      },
+      save?.decorations
+    );
     this.setupInput();
     this.setupAutosave();
     this.setupAudio();
@@ -254,6 +268,20 @@ export class GardenScene extends Phaser.Scene {
         this.gateObj = img;
         img.setInteractive({ useHandCursor: true });
         img.on("pointerdown", () => this.tryGoSpati());
+      }
+      // Flohmarkt tezgahı: dekorasyon dükkanı
+      if (obj.texture === "market") {
+        img.setInteractive({ useHandCursor: true });
+        img.on("pointerdown", () => this.openFlohmarkt());
+      }
+      // Kulübe: dekorasyon envanteri (satın alınanlar burada durur)
+      if (obj.texture === "shed") {
+        img.setInteractive({ useHandCursor: true });
+        img.on("pointerdown", () => {
+          if (this.registry.get("rolling") || this.registry.get("cutscene")) return;
+          this.suppressTap = true;
+          this.deco.openInventory();
+        });
       }
       // Kurutma şemsiyesi: çamaşır asma/toplama sahnesi
       if (obj.texture === "dryer") {
@@ -393,6 +421,17 @@ export class GardenScene extends Phaser.Scene {
     this.scene.launch("Spati", { onClose: () => this.saveNow() });
   }
 
+  /** Flohmarkt dükkanını aç (dekorasyon satın alma). */
+  private openFlohmarkt() {
+    if (this.registry.get("rolling") || this.registry.get("cutscene") || this.registry.get("placing"))
+      return;
+    this.scene.launch("Flohmarkt", {
+      onBuy: (id: string) => this.deco.addOwned(id),
+      onClose: () => this.saveNow(),
+      ownedCounts: {},
+    });
+  }
+
   private createBench() {
     const bench = this.add
       .image(BENCH_TILE.tx * TILE, BENCH_TILE.ty * TILE, "bench")
@@ -467,6 +506,11 @@ export class GardenScene extends Phaser.Scene {
       const world = pointer.positionToCamera(
         this.cameras.main
       ) as Phaser.Math.Vector2;
+      // Yerleştirme modu: dokunulan yere dekorasyonu koy
+      if (this.registry.get("placing")) {
+        this.deco.placeAt(world);
+        return;
+      }
       const tx = Math.floor(world.x / TILE);
       const ty = Math.floor(world.y / TILE);
 
@@ -509,6 +553,7 @@ export class GardenScene extends Phaser.Scene {
       tobacco: (this.registry.get("tobacco") as number) ?? 0,
       weed: (this.registry.get("weed") as number) ?? 0,
       laundry: this.laundry,
+      decorations: this.deco ? this.deco.serialize() : [],
       crops: this.plants.serialize(),
       savedAt: Date.now(),
     });

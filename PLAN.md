@@ -108,7 +108,12 @@ Tohum seç → Ek → Sula → Bekle (veya chill → 2x hız) → Hasat → Coin
       - **Bankta beraber weed:** chill'deyken bankın üstünde "💕 Feyza?"
         butonu çıkar → basınca Feyza gelip yanına oturur, ikisi tüter +
         kalpler; banktan kalkınca Feyza da gider.
-- [ ] Dekorasyon dükkanı (saksı, cüce, fener) — Berlin Flohmarkt teması
+- [x] **Flohmarkt dekorasyon sistemi** (22 Tem): terastaki çizgili tezgaha
+      dokun → Flohmarkt sahnesi, coin ile 8 dekorasyon (havuz, hamak, cüce,
+      peri ışıkları, flamingo, kuş banyosu, fener, mantar). Alınanlar
+      **kulübe (shed) envanterine** düşer → kulübeye dokun → öğe seç →
+      **yerleştirme modu** (dokunduğun yere koy) → yerleştirilmiş öğeye
+      dokun → **taşı / kulübeye kaldır** menüsü. Hepsi kayıtlı.
 - [ ] Anı koleksiyonu: hedeflere ulaşınca açılan ortak fotoğraflar/notlar
       (kullanıcıdan fotoğraf bekleniyor)
 

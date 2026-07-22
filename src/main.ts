@@ -4,6 +4,7 @@ import { GardenScene } from "./scenes/GardenScene";
 import { RollScene } from "./scenes/RollScene";
 import { LaundryScene } from "./scenes/LaundryScene";
 import { SpatiScene } from "./scenes/SpatiScene";
+import { FlohmarktScene } from "./scenes/FlohmarktScene";
 import { UIScene } from "./ui/HUD";
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -19,7 +20,15 @@ const config: Phaser.Types.Core.GameConfig = {
     default: "arcade",
     arcade: { debug: false },
   },
-  scene: [BootScene, GardenScene, RollScene, LaundryScene, SpatiScene, UIScene],
+  scene: [
+    BootScene,
+    GardenScene,
+    RollScene,
+    LaundryScene,
+    SpatiScene,
+    FlohmarktScene,
+    UIScene,
+  ],
 };
 
 const game = new Phaser.Game(config);
